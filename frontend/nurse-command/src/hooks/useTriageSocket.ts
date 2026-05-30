@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  AcuityLevel,
   AlertEvent,
   BiometricReading,
   PatientRecord,
@@ -7,58 +8,151 @@ import type {
 } from "@shared/types/telemetry";
 import mockPatients from "../mock/patients.json";
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-
-interface TriageSocketState {
-  patients: PatientRecord[];
-  activeAlerts: AlertEvent[];
-  connected: boolean;
+export interface CheckInData {
+  complaint: string;
+  acuity: AcuityLevel;
+  cameraOptIn: boolean;
 }
 
-export function useTriageSocket(): TriageSocketState & {
-  acknowledgeAlert: (alertId: string) => Promise<void>;
-  selectedPatient: PatientRecord | null;
-  setSelectedPatient: (patient: PatientRecord | null) => void;
-  latestBiometric: BiometricReading | null;
-} {
-  const [patients, setPatients] = useState<PatientRecord[]>(mockPatients as PatientRecord[]);
-  const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>([]);
-  const [connected, setConnected] = useState(USE_MOCK);
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
+function generateInitialHistory(patient: PatientRecord): BiometricReading[] {
+  const base = patient.last_biometric;
+  if (!base || base.heart_rate_bpm == null) return [];
+  const hr = base.heart_rate_bpm;
+  return Array.from({ length: 5 }, (_, i) => ({
+    patient_id: patient.patient_id,
+    heart_rate_bpm: Math.round(hr - (4 - i) * (hr * 0.04)),
+    respiratory_rate_bpm: base.respiratory_rate_bpm,
+    confidence: 0.85,
+    source: "rppg" as const,
+    recorded_at: new Date(Date.now() - (4 - i) * 120000).toISOString(),
+  }));
+}
+
+function appendHistory(
+  prev: Record<string, BiometricReading[]>,
+  patientId: string,
+  reading: BiometricReading,
+): Record<string, BiometricReading[]> {
+  const existing = prev[patientId] ?? [];
+  return { ...prev, [patientId]: [...existing.slice(-19), reading] };
+}
+
+export function useTriageSocket() {
+  const rawPatients = mockPatients as PatientRecord[];
+  const patientCountRef = useRef(rawPatients.length);
+
+  const [patients, setPatients] = useState<PatientRecord[]>(rawPatients);
+  const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>([
+    {
+      alert_id: "alert-init-001",
+      type: "BIOMETRIC_DROP",
+      severity: "CRITICAL",
+      patient_id: "pat-001",
+      message: "P-01 HR critical: 118 bpm — significantly elevated",
+      acknowledged: false,
+      created_at: new Date(Date.now() - 120000).toISOString(),
+    },
+  ]);
+  const [connected, setConnected] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
   const [latestBiometric, setLatestBiometric] = useState<BiometricReading | null>(null);
+  const [hrHistory, setHrHistory] = useState<Record<string, BiometricReading[]>>(() => {
+    const init: Record<string, BiometricReading[]> = {};
+    for (const p of rawPatients) {
+      init[p.patient_id] = generateInitialHistory(p);
+    }
+    return init;
+  });
+  const [demoMode, setDemoMode] = useState(false);
+  const demoStepRef = useRef(0);
 
+  // Live WebSocket
   useEffect(() => {
     if (USE_MOCK) return;
 
     const ws = new WebSocket(`${API_BASE.replace("http", "ws")}/ws/nurse`);
-
     ws.onopen = () => setConnected(true);
     ws.onclose = () => setConnected(false);
     ws.onmessage = (event) => {
       try {
         const envelope = JSON.parse(event.data as string) as TelemetryEnvelope;
         if (envelope.type === "PATIENTS_SNAPSHOT") {
-          const payload = envelope.payload as { patients: PatientRecord[] };
+          const payload = envelope.payload as unknown as { patients: PatientRecord[] };
           setPatients(payload.patients);
         } else if (envelope.type === "PATIENT_UPDATE") {
-          const updated = envelope.payload as PatientRecord;
+          const updated = envelope.payload as unknown as PatientRecord;
           setPatients((prev) =>
             prev.map((p) => (p.patient_id === updated.patient_id ? updated : p)),
           );
         } else if (envelope.type === "ALERT") {
-          const alert = envelope.payload as AlertEvent;
+          const alert = envelope.payload as unknown as AlertEvent;
           setActiveAlerts((prev) => [alert, ...prev.filter((a) => a.alert_id !== alert.alert_id)]);
         } else if (envelope.type === "BIOMETRIC") {
-          setLatestBiometric(envelope.payload as BiometricReading);
+          const reading = envelope.payload as unknown as BiometricReading;
+          setLatestBiometric(reading);
+          setHrHistory((prev) => appendHistory(prev, reading.patient_id, reading));
+          setPatients((prev) =>
+            prev.map((p) =>
+              p.patient_id === reading.patient_id ? { ...p, last_biometric: reading } : p,
+            ),
+          );
         }
       } catch {
         // ignore malformed messages
       }
     };
-
     return () => ws.close();
   }, []);
+
+  // Demo mode: simulate P-01 deteriorating
+  useEffect(() => {
+    if (!demoMode) {
+      demoStepRef.current = 0;
+      return;
+    }
+
+    const id = setInterval(() => {
+      demoStepRef.current += 1;
+      const step = demoStepRef.current;
+      const newHr = Math.min(185, 118 + step * 3 + Math.round((step % 2) * 2));
+      const newRr = Math.min(30, 22 + Math.floor(step / 4));
+
+      const reading: BiometricReading = {
+        patient_id: "pat-001",
+        heart_rate_bpm: newHr,
+        respiratory_rate_bpm: newRr,
+        confidence: 0.9,
+        source: "rppg",
+        recorded_at: new Date().toISOString(),
+      };
+
+      setLatestBiometric(reading);
+      setPatients((prev) =>
+        prev.map((p) => (p.patient_id === "pat-001" ? { ...p, last_biometric: reading } : p)),
+      );
+      setHrHistory((prev) => appendHistory(prev, "pat-001", reading));
+
+      if (step === 8) {
+        setActiveAlerts((prev) => [
+          {
+            alert_id: `demo-fall-${Date.now()}`,
+            type: "CRITICAL_FALL",
+            severity: "CRITICAL",
+            patient_id: "pat-001",
+            message: "Fall detected — P-01 in waiting area",
+            acknowledged: false,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+      }
+    }, 2000);
+
+    return () => clearInterval(id);
+  }, [demoMode]);
 
   const acknowledgeAlert = useCallback(async (alertId: string) => {
     if (!USE_MOCK) {
@@ -71,13 +165,69 @@ export function useTriageSocket(): TriageSocketState & {
     setActiveAlerts((prev) => prev.filter((a) => a.alert_id !== alertId));
   }, []);
 
+  const escalatePatient = useCallback((patientId: string) => {
+    setPatients((prev) =>
+      prev.map((p) =>
+        p.patient_id === patientId ? { ...p, status: "ESCALATED" as const } : p,
+      ),
+    );
+  }, []);
+
+  const addPatient = useCallback((data: CheckInData): { display_name: string } => {
+    patientCountRef.current += 1;
+    const num = patientCountRef.current;
+    const display_name = `P-${String(num).padStart(2, "0")}`;
+    const newPatient: PatientRecord = {
+      patient_id: `pat-${String(num).padStart(3, "0")}`,
+      display_name,
+      queue_position: num,
+      acuity: data.acuity,
+      status: "WAITING",
+      wait_minutes: 0,
+      chief_complaint: data.complaint,
+      camera_enabled: data.cameraOptIn,
+      last_biometric: null,
+      created_at: new Date().toISOString(),
+    };
+    setPatients((prev) => [...prev, newPatient]);
+    if (!USE_MOCK) {
+      void fetch(`${API_BASE}/api/v1/intake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          display_name,
+          chief_complaint: data.complaint,
+          acuity_self_report: data.acuity,
+        }),
+      });
+    }
+    return { display_name };
+  }, []);
+
+  const markStable = useCallback((patientId: string) => {
+    setPatients((prev) =>
+      prev.map((p) =>
+        p.patient_id === patientId
+          ? { ...p, status: "WAITING" as const, acuity: "LESS_URGENT" as const }
+          : p,
+      ),
+    );
+  }, []);
+
   return {
     patients,
     activeAlerts,
     connected,
+    isMock: USE_MOCK,
     acknowledgeAlert,
     selectedPatient,
     setSelectedPatient,
     latestBiometric,
+    hrHistory,
+    demoMode,
+    setDemoMode,
+    escalatePatient,
+    markStable,
+    addPatient,
   };
 }
