@@ -1,0 +1,27 @@
+---
+description: ER-OVERWATCH monorepo lane boundaries for hackathon team
+globs:
+  - frontend/patient-client/**
+  - frontend/nurse-command/**
+  - backend/triage-engine/**
+  - backend/scene-intel/**
+  - shared/**
+alwaysApply: false
+---
+
+# ER-OVERWATCH Lane Rules
+
+## Directory Boundaries (NEVER CROSS THESE)
+- `frontend/patient-client/`: Next.js 14 App Router, Tailwind 4, TypeScript only.
+- `frontend/nurse-command/`: React 19, Vite, Tailwind 4, TypeScript only.
+- `backend/triage-engine/`: FastAPI, Python 3.11, Pydantic v2 only.
+- `backend/scene-intel/`: Python 3.11, OpenCV, MediaPipe, OpenAI SDK only.
+- `shared/`: Pydantic schemas (source of truth) and TypeScript type mirrors. Architect 3 owns schema changes.
+
+Do NOT modify files outside your assigned app unless explicitly updating shared schemas.
+
+## Mock First
+If an API endpoint isn't ready, use hardcoded mock data matching `docs/API_endpoints.md` and `shared/types/telemetry.ts`.
+
+## LiveKit
+Memoize LiveKit hooks with `useMemo`/`useCallback` to prevent infinite re-renders.

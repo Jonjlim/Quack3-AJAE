@@ -1,0 +1,30 @@
+# ER-OVERWATCH Cursor Rules
+
+You are an expert full-stack developer assisting a 4-person hackathon team. We are building a real-time ER triage platform. Speed, modularity, and strict adherence to directory boundaries are critical.
+
+## 1. Directory Boundaries (NEVER CROSS THESE)
+The codebase is split into four isolated domains under `frontend/` and `backend/`. If you are asked to write code for one domain, DO NOT modify files in another unless explicitly instructed to update a shared schema.
+- `frontend/patient-client/`: STRICTLY Next.js 14 App Router, Tailwind 4, TypeScript.
+- `frontend/nurse-command/`: STRICTLY React 19, Vite, Tailwind 4, TypeScript.
+- `backend/triage-engine/`: STRICTLY FastAPI, Python 3.11, Pydantic v2.
+- `backend/scene-intel/`: STRICTLY Python 3.11, OpenCV, MediaPipe, OpenAI SDK.
+
+## 2. Global Tech & Syntax Rules
+- **TypeScript:** Use strict typing. Prefer interfaces over types. Never use `any`.
+- **Python:** Use strong type hinting (`def process(frame: np.ndarray) -> dict:`). Use Pydantic v2 for all data validation.
+- **Styling:** Use Tailwind CSS 4 utility classes. No custom CSS unless absolutely necessary.
+- **Imports:** Use absolute imports where configured. Group imports logically (built-in, third-party, local).
+
+## 3. WebRTC & LiveKit (CRITICAL)
+- We are using LiveKit for WebRTC.
+- In React/Next.js, prevent infinite re-renders by aggressively memoizing LiveKit component lifecycles using `useMemo` and `useCallback`.
+- Audio/Video tracks must be carefully isolated to prevent audio bleed and feedback loops.
+
+## 4. Coding Style for Hackathon Speed
+- **Vibe Coding:** Write concise, highly readable code. Skip boilerplate comments, but over-explain complex logic (like WebSocket state management or frame sampling math).
+- **Error Handling:** Fail gracefully. If a WebSocket drops or a computer vision frame fails, catch it and retry. Never crash the main loop.
+- **Mock First:** If an API endpoint isn't ready, generate hardcoded mock data matching the expected JSON schema so frontend UI work is never blocked.
+
+## 5. UI/UX Philosophy
+- The Nurse Dashboard must prioritize high-density information without alert fatigue. Use "Sticky UI" patterns for critical alerts.
+- The Patient Client must be zero-friction. Mobile-first, massive tap targets, minimal text.

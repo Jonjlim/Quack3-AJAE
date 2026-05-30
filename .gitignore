@@ -1,29 +1,17 @@
-# ==========================================
-# 1. Python Byte-compiled / Optimized Files
-# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
 
-# ==========================================
-# 2. Virtual Environments (Highly Recommended)
-# ==========================================
 .venv/
 venv/
 env/
 ENV/
 pyvenv.cfg
 
-# ==========================================
-# 3. Environment Variables & Secrets (Security)
-# ==========================================
 .env
 .secrets
 *.local
 
-# ==========================================
-# 4. Distribution / Packaging
-# ==========================================
 bin/
 build/
 develop-eggs/
@@ -43,9 +31,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# ==========================================
-# 5. Testing and Code Coverage
-# ==========================================
 htmlcov/
 .tox/
 .nox/
@@ -61,24 +46,27 @@ coverage.xml
 .ruff_cache/
 .mypy_cache/
 
-# ==========================================
-# 6. IDEs and Code Editors
-# ==========================================
-# Visual Studio Code
 .vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# PyCharm / JetBrains
 .idea/
 
-# Jupyter Notebooks
 .ipynb_checkpoints
 
-# ==========================================
-# 7. Operating System Specific
-# ==========================================
 .DS_Store
 Thumbs.db
+
+# Node / frontend
+node_modules/
+.next/
+dist/
+out/
+*.tsbuildinfo
+.turbo/
+
+# Docker volumes
+postgres_data/
+redis_data/
