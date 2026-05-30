@@ -19,8 +19,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python packaging (not frontend patient-client/lib)
+backend/**/lib/
 lib64/
+!frontend/patient-client/lib/
 parts/
 sdist/
 var/
