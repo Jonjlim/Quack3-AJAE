@@ -58,3 +58,15 @@ coverage.xml
 
 .DS_Store
 Thumbs.db
+
+# Node / frontend
+node_modules/
+.next/
+dist/
+out/
+*.tsbuildinfo
+.turbo/
+
+# Docker volumes
+postgres_data/
+redis_data/

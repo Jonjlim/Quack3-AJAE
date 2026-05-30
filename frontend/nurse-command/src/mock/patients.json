@@ -1,0 +1,33 @@
+[
+  {
+    "patient_id": "pat-002",
+    "display_name": "Jordan K.",
+    "queue_position": 1,
+    "acuity": "EMERGENT",
+    "status": "ESCALATED",
+    "wait_minutes": 28,
+    "chief_complaint": "Severe abdominal pain",
+    "camera_enabled": true,
+    "last_biometric": {
+      "patient_id": "pat-002",
+      "heart_rate_bpm": 112,
+      "respiratory_rate_bpm": 22,
+      "confidence": 0.87,
+      "source": "rppg",
+      "recorded_at": "2026-05-30T18:11:00Z"
+    },
+    "created_at": "2026-05-30T17:44:00Z"
+  },
+  {
+    "patient_id": "pat-001",
+    "display_name": "Alex M.",
+    "queue_position": 4,
+    "acuity": "URGENT",
+    "status": "WAITING",
+    "wait_minutes": 12,
+    "chief_complaint": "Chest pain, difficulty breathing",
+    "camera_enabled": false,
+    "last_biometric": null,
+    "created_at": "2026-05-30T18:00:00Z"
+  }
+]
