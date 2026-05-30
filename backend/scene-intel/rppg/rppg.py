@@ -8,6 +8,7 @@ import base64
 import tempfile
 import os
 
+# pyrefly: ignore [missing-import]
 import cv2
 import numpy as np
 import mediapipe as mp
