@@ -156,3 +156,31 @@ class HelpRequestPayload(BaseModel):
 class DemoFallTriggerResponse(BaseModel):
     alert: AlertEvent
     broadcast: bool
+
+
+class FallDetectionResult(BaseModel):
+    fall_detected: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    danger_level: Literal["low", "medium", "high"]
+    coordinates: dict[str, int] | None = None
+    frame_timestamp: float | None = None
+
+
+class SceneIntelFallResponse(BaseModel):
+    analysis: FallDetectionResult
+    alert: AlertEvent | None = None
+    broadcast: bool = False
+
+
+class RppgAnalysisResult(BaseModel):
+    heart_rate_bpm: float | None = None
+    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+    signal_quality: Literal["good", "fair", "poor"]
+    error: str | None = None
+
+
+class SceneIntelRppgResponse(BaseModel):
+    analysis: RppgAnalysisResult
+    biometric: BiometricReading | None = None
+    alert: AlertEvent | None = None
+    broadcast: bool = False
