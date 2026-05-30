@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 
+from app.services.events import EventBus
 from app.services.state import state_service
+from app.ws.manager import manager
 from shared.schemas.telemetry import (
     AcuityLevel,
     IntakeRequest,
@@ -13,18 +15,18 @@ from shared.schemas.telemetry import (
 )
 
 router = APIRouter(prefix="/api/v1", tags=["intake"])
+events = EventBus(manager, state_service)
 
 
 @router.post("/intake", response_model=IntakeResponse, status_code=status.HTTP_201_CREATED)
 async def create_intake(body: IntakeRequest) -> IntakeResponse:
     patient_id = f"pat-{uuid.uuid4().hex[:6]}"
     now = datetime.now(timezone.utc)
-    position = len(state_service.patients) + 1
 
     patient = PatientRecord(
         patient_id=patient_id,
         display_name=body.display_name,
-        queue_position=position,
+        queue_position=1,
         acuity=body.acuity_self_report or AcuityLevel.URGENT,
         status=PatientStatus.WAITING,
         wait_minutes=0,
@@ -33,11 +35,16 @@ async def create_intake(body: IntakeRequest) -> IntakeResponse:
         last_biometric=None,
         created_at=now,
     )
-    state_service.add_patient(patient)
+    added = state_service.add_patient(patient)
+    queue = state_service.get_queue_status(patient_id)
+
+    await events.patients_snapshot()
+    if added:
+        await events.patient_update(added)
 
     return IntakeResponse(
         patient_id=patient_id,
-        queue_position=position,
-        estimated_wait_minutes=state_service.acuity_load.estimated_wait_minutes,
+        queue_position=added.queue_position if added else 1,
+        estimated_wait_minutes=queue.estimated_wait_minutes if queue else state_service.acuity_load.estimated_wait_minutes,
         created_at=now,
     )
