@@ -53,25 +53,21 @@ export function PatientGrid({
     <aside className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-slate-700 bg-slate-900">
       <header className="border-b border-slate-700 px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
-          Patient Queue
+          Patient queue
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">{patients.length} patients</p>
       </header>
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
-        {sorted.map((patient) => {
-          const alertCount = alertCountByPatient[patient.patient_id] ?? 0;
-          return (
-            <PatientCard
-              key={patient.patient_id}
-              patient={patient}
-              isSelected={patient.patient_id === selectedPatientId}
-              onSelect={onSelect}
-              hrData={hrHistory[patient.patient_id] ?? []}
-              alertCount={alertCount}
-              priorityScore={priorityScore(patient, alertCount)}
-            />
-          );
-        })}
+        {sorted.map((patient) => (
+          <PatientCard
+            key={patient.patient_id}
+            patient={patient}
+            isSelected={patient.patient_id === selectedPatientId}
+            onSelect={onSelect}
+            hrData={hrHistory[patient.patient_id] ?? []}
+            alertCount={alertCountByPatient[patient.patient_id] ?? 0}
+          />
+        ))}
       </div>
     </aside>
   );

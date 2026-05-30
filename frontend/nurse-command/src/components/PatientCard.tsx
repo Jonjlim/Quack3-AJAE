@@ -8,7 +8,6 @@ interface PatientCardProps {
   onSelect: (patient: PatientRecord) => void;
   hrData: BiometricReading[];
   alertCount: number;
-  priorityScore: number;
 }
 
 const ACUITY_META: Record<
@@ -32,7 +31,7 @@ function formatElapsed(baseMinutes: number, extraSeconds: number): string {
   return `${s}s`;
 }
 
-export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount, priorityScore: score }: PatientCardProps) {
+export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount }: PatientCardProps) {
   const [extraSeconds, setExtraSeconds] = useState(0);
 
   useEffect(() => {
@@ -66,8 +65,12 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount,
           />
           <span className="text-sm font-bold text-white">{patient.display_name}</span>
           <span
-            className="rounded px-1.5 py-0.5 text-xs font-semibold"
-            style={{ background: meta.triageColor + "28", color: meta.triageColor }}
+            className="rounded px-1.5 py-0.5 text-xs font-bold"
+            style={{
+              background: meta.triageColor + "30",
+              color: meta.triageColor,
+              border: `1px solid ${meta.triageColor}70`,
+            }}
           >
             T{meta.triageNum}
           </span>
@@ -88,7 +91,7 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount,
       </div>
 
       {/* Row 2: complaint */}
-      <p className="mb-2 line-clamp-1 text-xs text-slate-400">{patient.chief_complaint}</p>
+      <p className="mb-2 line-clamp-1 text-sm text-slate-300">{patient.chief_complaint}</p>
 
       {/* Row 3: HR value + sparkline */}
       <div className="flex items-center gap-2">
@@ -107,7 +110,7 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount,
                   type="monotone"
                   dataKey="heart_rate_bpm"
                   stroke={meta.statusColor}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}
                 />
@@ -117,15 +120,10 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount,
         )}
       </div>
 
-      {/* Row 4: wait time + priority score */}
-      <div className="mt-1.5 flex items-center justify-between">
-        <p className="text-xs text-slate-600">
-          Waiting: {formatElapsed(patient.wait_minutes, extraSeconds)}
-        </p>
-        <p className="text-xs tabular-nums" style={{ color: "#475569" }}>
-          ↑ {score.toLocaleString()}
-        </p>
-      </div>
+      {/* Row 4: wait time */}
+      <p className="mt-1.5 text-xs text-slate-600">
+        Waiting: {formatElapsed(patient.wait_minutes, extraSeconds)}
+      </p>
     </button>
   );
 }

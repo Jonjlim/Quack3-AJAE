@@ -6,7 +6,7 @@ import type {
   PatientRecord,
   TelemetryEnvelope,
 } from "@shared/types/telemetry";
-import mockPatients from "../mock/patients.json";
+import { MOCK_PATIENTS, MOCK_INITIAL_ALERTS } from "../mock/mockData";
 
 export interface CheckInData {
   complaint: string;
@@ -41,21 +41,11 @@ function appendHistory(
 }
 
 export function useTriageSocket() {
-  const rawPatients = mockPatients as PatientRecord[];
+  const rawPatients = MOCK_PATIENTS;
   const patientCountRef = useRef(rawPatients.length);
 
   const [patients, setPatients] = useState<PatientRecord[]>(rawPatients);
-  const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>([
-    {
-      alert_id: "alert-init-001",
-      type: "BIOMETRIC_DROP",
-      severity: "CRITICAL",
-      patient_id: "pat-001",
-      message: "P-01 HR critical: 118 bpm — significantly elevated",
-      acknowledged: false,
-      created_at: new Date(Date.now() - 120000).toISOString(),
-    },
-  ]);
+  const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>(MOCK_INITIAL_ALERTS);
   const [connected, setConnected] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
   const [latestBiometric, setLatestBiometric] = useState<BiometricReading | null>(null);
