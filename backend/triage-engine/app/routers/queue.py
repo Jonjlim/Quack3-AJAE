@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
+from app.services.events import EventBus
 from app.services.state import state_service
 from app.ws.manager import manager
 from shared.schemas.telemetry import (
@@ -11,18 +12,18 @@ from shared.schemas.telemetry import (
     DemoFallTriggerResponse,
     PatientRecord,
     QueueStatus,
-    TelemetryEventType,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["queue"])
+events = EventBus(manager, state_service)
 
 
 @router.get("/queue/{patient_id}", response_model=QueueStatus)
 async def get_queue_status(patient_id: str) -> QueueStatus:
-    status = state_service.get_queue_status(patient_id)
-    if status is None:
+    queue = state_service.get_queue_status(patient_id)
+    if queue is None:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return status
+    return queue
 
 
 @router.get("/acuity-load", response_model=AcuityLoad)
@@ -51,9 +52,5 @@ async def acknowledge_alert(alert_id: str, body: AlertAckRequest) -> AlertAckRes
 @router.post("/demo/trigger-fall", response_model=DemoFallTriggerResponse)
 async def trigger_demo_fall() -> DemoFallTriggerResponse:
     alert = state_service.create_demo_fall_alert()
-    await manager.broadcast(
-        "nurse",
-        TelemetryEventType.ALERT,
-        alert.model_dump(mode="json"),
-    )
+    await events.alert(alert)
     return DemoFallTriggerResponse(alert=alert, broadcast=True)

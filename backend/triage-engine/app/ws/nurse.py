@@ -1,8 +1,10 @@
+import asyncio
 import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.services.events import EventBus
 from app.services.state import state_service
 from app.ws.manager import manager
 from shared.schemas.telemetry import (
@@ -14,6 +16,7 @@ from shared.schemas.telemetry import (
 )
 
 router = APIRouter(tags=["websockets"])
+events = EventBus(manager, state_service)
 
 
 @router.websocket("/ws/nurse")
@@ -59,11 +62,11 @@ async def patient_websocket(websocket: WebSocket, patient_id: str) -> None:
                         help_payload.patient_id,
                         help_payload.message,
                     )
-                    await manager.broadcast(
-                        "nurse",
-                        TelemetryEventType.ALERT,
-                        alert.model_dump(mode="json"),
-                    )
+                    patient = state_service.get_patient(help_payload.patient_id)
+                    await events.alert(alert)
+                    if patient:
+                        await events.patient_update(patient)
+                    await events.help_ack(help_payload.patient_id)
                     await manager.send_json(
                         websocket,
                         {"status": "received", "alert_id": alert.alert_id},
@@ -86,20 +89,32 @@ async def ai_websocket(websocket: WebSocket) -> None:
                 if envelope.type == TelemetryEventType.ALERT:
                     alert = AlertEvent.model_validate(envelope.payload)
                     state_service.add_alert(alert)
-                    await manager.broadcast(
-                        "nurse",
-                        TelemetryEventType.ALERT,
-                        alert.model_dump(mode="json"),
-                    )
+                    await events.alert(alert)
+                    if alert.patient_id:
+                        patient = state_service.get_patient(alert.patient_id)
+                        if patient:
+                            await events.patient_update(patient)
                 elif envelope.type == TelemetryEventType.BIOMETRIC:
                     reading = BiometricReading.model_validate(envelope.payload)
-                    await manager.broadcast(
-                        "nurse",
-                        TelemetryEventType.BIOMETRIC,
-                        reading.model_dump(mode="json"),
-                    )
+                    patient, bio_alert = state_service.apply_biometric(reading)
+                    await events.biometric(reading)
+                    if patient:
+                        await events.patient_update(patient)
+                    if bio_alert:
+                        await events.alert(bio_alert)
                 await manager.send_json(websocket, {"status": "received"})
             except Exception:
                 await manager.send_json(websocket, {"status": "error", "detail": "Invalid payload"})
     except WebSocketDisconnect:
         manager.disconnect("ai", websocket)
+
+
+async def wait_time_ticker(interval_seconds: int = 30) -> None:
+    """Background loop — refresh wait times and push queue updates to connected clients."""
+    while True:
+        await asyncio.sleep(interval_seconds)
+        positions_changed = state_service.refresh_wait_times()
+        await events.patients_snapshot()
+        if positions_changed:
+            for patient in state_service.get_patients():
+                await events.queue_update(patient.patient_id)
