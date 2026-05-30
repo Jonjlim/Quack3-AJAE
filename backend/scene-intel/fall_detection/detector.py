@@ -3,7 +3,7 @@
 import json
 from generalFunctions.GeminiAPI import query_gemini_video
 
-_PROMPT = """You are a hospital urgent care fall detection system analyzing a 5-second video clip from a monitoring camera.
+_PROMPT = """You are a hospital urgent care fall detection system analyzing a video clip from a monitoring camera.
 
 Analyze the video for any falls or fall-like events. Evaluate:
 1. Whether a fall occurred
