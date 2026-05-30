@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     livekit_api_secret: str = "secret"
     livekit_url: str = "ws://localhost:7880"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    testing: bool = False
 
 
 settings = Settings()
