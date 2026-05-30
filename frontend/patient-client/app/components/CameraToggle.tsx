@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import type { LiveKitTokenResponse } from "@shared/types/telemetry";
+import {
+  createLocalVideoTrack,
+  Room,
+  type LocalVideoTrack,
+} from "livekit-client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface CameraToggleProps {
   patientId: string;
@@ -10,14 +16,38 @@ interface CameraToggleProps {
 export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraToggleProps) {
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string>("Camera off");
+  const roomRef = useRef<Room | null>(null);
+  const videoTrackRef = useRef<LocalVideoTrack | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const identity = useMemo(() => patientId, [patientId]);
   const roomName = useMemo(() => room, [room]);
 
+  const stopStream = useCallback(async () => {
+    const track = videoTrackRef.current;
+    if (track) {
+      track.stop();
+      track.detach();
+      videoTrackRef.current = null;
+    }
+    const lkRoom = roomRef.current;
+    if (lkRoom) {
+      await lkRoom.disconnect();
+      roomRef.current = null;
+    }
+    setEnabled(false);
+    setStatus("Camera off");
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void stopStream();
+    };
+  }, [stopStream]);
+
   const toggleCamera = useCallback(async () => {
     if (enabled) {
-      setEnabled(false);
-      setStatus("Camera off");
+      await stopStream();
       return;
     }
 
@@ -30,13 +60,33 @@ export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraTogg
         body: JSON.stringify({ room: roomName, identity, role: "patient" }),
       });
       if (!response.ok) throw new Error("Token request failed");
+
+      const tokenData = (await response.json()) as LiveKitTokenResponse;
+      const lkRoom = new Room({ adaptiveStream: true, dynacast: true });
+      roomRef.current = lkRoom;
+
+      await lkRoom.connect(tokenData.url, tokenData.token);
+
+      const videoTrack = await createLocalVideoTrack({
+        facingMode: "user",
+        resolution: { width: 640, height: 480 },
+      });
+      videoTrackRef.current = videoTrack;
+      await lkRoom.localParticipant.publishTrack(videoTrack);
+
       setEnabled(true);
       setStatus("Streaming to triage nurse");
+
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoTrack.attach(videoRef.current);
+        }
+      });
     } catch {
+      await stopStream();
       setStatus("Connection failed — retry or use mock mode");
-      setEnabled(false);
     }
-  }, [enabled, identity, roomName]);
+  }, [enabled, identity, roomName, stopStream]);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -44,6 +94,15 @@ export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraTogg
       <p className="mt-1 text-sm text-slate-500">
         Share your camera so a nurse can assess you while you wait.
       </p>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`mt-4 aspect-video w-full rounded-xl bg-slate-900 object-cover ${
+          enabled ? "block" : "hidden"
+        }`}
+      />
       <p className="mt-3 text-sm font-medium text-slate-700">{status}</p>
       <button
         type="button"

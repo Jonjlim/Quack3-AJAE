@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ER-OVERWATCH">
+  <rect width="512" height="512" rx="96" fill="#2563eb"/>
+  <path fill="#fff" d="M256 120c-52 0-94 42-94 94v28h-36v72h260v-72h-36v-28c0-52-42-94-94-94zm0 48c25 0 46 21 46 46v28H210v-28c0-25 21-46 46-46z"/>
+  <circle cx="256" cy="380" r="48" fill="#fff"/>
+</svg>
