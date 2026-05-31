@@ -90,3 +90,61 @@ body {
 .camera-feed-correct > video {
   transform: scaleX(-1);
 }
+
+/* ── Fall alert modal — full-screen critical overlay ───────────────────── */
+@keyframes fall-overlay-flash {
+  0%, 100% { background: rgba(0, 0, 0, 0.72); }
+  50%       { background: rgba(180, 0, 0, 0.22); }
+}
+
+@keyframes fall-bar-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.12); }
+}
+
+@keyframes fall-modal-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  50%       { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.45); }
+}
+
+@keyframes fall-icon-shake {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-8deg); }
+  40%       { transform: rotate(8deg); }
+  60%       { transform: rotate(-6deg); }
+  80%       { transform: rotate(6deg); }
+}
+
+.fall-alert-overlay {
+  animation: fall-overlay-flash 1.2s ease-in-out infinite;
+}
+
+.fall-alert-modal {
+  animation: fall-modal-border 1.2s ease-in-out infinite;
+}
+
+.fall-alert-bar {
+  animation: fall-bar-pulse 0.7s ease-in-out infinite;
+}
+
+.fall-alert-icon {
+  animation: fall-icon-shake 1.4s ease-in-out infinite;
+}
+
+.fall-ack-btn {
+  transition: filter 0.1s ease;
+}
+
+.fall-ack-btn:hover {
+  filter: brightness(0.88);
+}
+
+/* ── CRITICAL_FALL sidebar card — pulsing border ────────────────────────── */
+@keyframes fall-card-border-pulse {
+  0%, 100% { border-color: #dc2626; background: #fff1f2; }
+  50%       { border-color: #991b1b; background: #fee2e2; }
+}
+
+.alert-card-fall {
+  animation: fall-card-border-pulse 1s ease-in-out infinite;
+}
