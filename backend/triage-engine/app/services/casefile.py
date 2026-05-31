@@ -13,11 +13,6 @@ import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 
-from reportlab.lib.pagesizes import LETTER
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-
 # Ensure scene-intel is importable (GeminiAPI lives there)
 _SCENE_INTEL = str(Path(__file__).resolve().parents[4] / "backend" / "scene-intel")
 if _SCENE_INTEL not in sys.path:
@@ -247,6 +242,16 @@ async def generate_report(patient_id: str) -> str:
 
 async def generate_report_pdf(patient_id: str) -> bytes:
     """Generate a PDF case-file report and return raw bytes."""
+    try:
+        from reportlab.lib.pagesizes import LETTER
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import inch
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+    except ImportError as exc:
+        raise RuntimeError(
+            "PDF generation requires reportlab (pip install -r backend/triage-engine/requirements.txt)"
+        ) from exc
+
     markdown = await generate_report(patient_id)
 
     buf = io.BytesIO()

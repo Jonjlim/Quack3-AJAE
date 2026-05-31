@@ -1,5 +1,7 @@
 /** API client for the nurse-side case-file report feature. */
 
+import { authFetch } from "./auth-fetch";
+
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
@@ -10,7 +12,7 @@ export async function getReportMarkdown(patientId: string): Promise<string> {
     return `## Chief Complaint\nPatient reports severe abdominal pain.\n\n## History of Present Illness\nPain started approximately 3 hours ago, progressively worsening.\n\n## Symptom Details\n- Abdominal pain: 7/10, lower right quadrant\n- Nausea\n- Low-grade fever\n\n## Medications & Allergies\n- Ibuprofen 400mg taken 2 hours ago\n- No known allergies\n\n## Relevant Medical History\nNot discussed\n\n## Symptom Timeline\n- 15:30 — Initial pain onset\n- 16:45 — Pain intensified, moved to lower right\n- 17:00 — Nausea began\n\n## Additional Context\nPatient last ate 5 hours ago.`;
   }
 
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE}/api/v1/casefile/${encodeURIComponent(patientId)}/report`,
   );
   if (!res.ok) {
@@ -31,7 +33,7 @@ export async function hasConversation(patientId: string): Promise<boolean> {
   if (USE_MOCK) return true;
 
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${API_BASE}/api/v1/casefile/${encodeURIComponent(patientId)}/conversation`,
     );
     if (!res.ok) return false;

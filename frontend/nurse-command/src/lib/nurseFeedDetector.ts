@@ -87,7 +87,7 @@ function drawBoxes(
 export function createNurseFeedDetector(
   videoEl: HTMLVideoElement,
   overlayCanvas: HTMLCanvasElement,
-  onFall?: (detail: { confidence: number; state: DistressState }) => void,
+  onFall?: (detail: { confidence: number; state: "falling" | "collapsed" }) => void,
 ): { cleanup: () => void; ready: Promise<void> } {
   let alive = true;
   let rafId: number | null = null;
@@ -162,7 +162,7 @@ export function createNurseFeedDetector(
         const { state, confidence, shouldAlert } = tracker.update(features, now);
         drawList.push({ lms, state });
 
-        if (shouldAlert && onFall) {
+        if (shouldAlert && onFall && state !== "safe") {
           onFall({ confidence, state });
         }
       }

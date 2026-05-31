@@ -1,7 +1,10 @@
 import asyncio
+import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -11,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import intake, livekit_tokens, queue, rppg, casefile, auth
+from app.routers import auth, intake, livekit_tokens, queue, rppg
 from app.ws import nurse as ws_nurse
 
 
@@ -55,7 +58,12 @@ app.include_router(intake.router)
 app.include_router(queue.router)
 app.include_router(livekit_tokens.router)
 app.include_router(rppg.router)
-app.include_router(casefile.router)
+try:
+    from app.routers import casefile
+
+    app.include_router(casefile.router)
+except ImportError as exc:
+    logger.warning("Casefile routes disabled (optional deps missing): %s", exc)
 app.include_router(ws_nurse.router)
 
 

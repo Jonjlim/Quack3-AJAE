@@ -50,6 +50,7 @@ export default function App() {
     patients,
     activeAlerts,
     connected,
+    telemetryError,
     isMock,
     acknowledgeAlert,
     selectedPatient,
@@ -153,6 +154,15 @@ export default function App() {
           </span>
         </div>
       </header>
+
+      {telemetryError && !isMock && (
+        <div
+          className="flex-shrink-0 border-b border-amber-900/50 bg-amber-950/40 px-5 py-2 text-sm text-amber-200"
+          role="alert"
+        >
+          {telemetryError}
+        </div>
+      )}
 
       <div className="flex flex-1 gap-3 overflow-hidden p-3">
         {tab === "dashboard" ? (
