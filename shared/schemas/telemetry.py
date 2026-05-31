@@ -167,18 +167,22 @@ class DemoFallTriggerResponse(BaseModel):
     broadcast: bool
 
 
-class FallDetectionResult(BaseModel):
-    fall_detected: bool
+class BrowserFallReportRequest(BaseModel):
+    """Fall detected in the browser (nurse dashboard / room camera)."""
+
     confidence: float = Field(ge=0.0, le=1.0)
-    danger_level: Literal["low", "medium", "high"]
+    danger_level: Literal["low", "medium", "high"] = "high"
     coordinates: dict[str, int] | None = None
     frame_timestamp: float | None = None
+    source: Literal["browser"] = "browser"
+    patient_id: str | None = None
+    message: str | None = None
 
 
-class SceneIntelFallResponse(BaseModel):
-    analysis: FallDetectionResult
-    alert: AlertEvent | None = None
-    broadcast: bool = False
+class FallReportResponse(BaseModel):
+    alert: AlertEvent
+    broadcast: bool
+    accepted: bool = True
 
 
 class RppgQualityMetrics(BaseModel):

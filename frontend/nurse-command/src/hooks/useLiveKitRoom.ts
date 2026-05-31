@@ -6,14 +6,26 @@ export interface RemoteVideoTrack {
   mediaStreamTrack: MediaStreamTrack;
 }
 
-export function useLiveKitRoom(room = "er-waiting-room", identity = "nurse-01") {
+export function useLiveKitRoom(
+  room = "er-waiting-room",
+  identity = "nurse-01",
+  /** When set, only these LiveKit participant identities are shown (ignores stale publishers). */
+  allowedIdentities?: ReadonlySet<string>,
+) {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remoteVideos, setRemoteVideos] = useState<RemoteVideoTrack[]>([]);
   const roomRef = useRef<Room | null>(null);
+  const allowedIdentitiesRef = useRef(allowedIdentities);
+  allowedIdentitiesRef.current = allowedIdentities;
 
   const roomName = useMemo(() => room, [room]);
   const participantId = useMemo(() => identity, [identity]);
+
+  useEffect(() => {
+    if (!allowedIdentities) return;
+    setRemoteVideos((prev) => prev.filter((v) => allowedIdentities.has(v.identity)));
+  }, [allowedIdentities]);
 
   const disconnect = useCallback(async () => {
     const lkRoom = roomRef.current;
@@ -51,6 +63,13 @@ export function useLiveKitRoom(room = "er-waiting-room", identity = "nurse-01") 
       roomRef.current = lkRoom;
 
       const addVideo = (participantIdentity: string, publication: RemoteTrackPublication) => {
+        const allowed = allowedIdentitiesRef.current;
+        if (allowed && !allowed.has(participantIdentity)) {
+          if (publication.kind === Track.Kind.Video) {
+            publication.setSubscribed(false);
+          }
+          return;
+        }
         if (publication.kind !== Track.Kind.Video || !publication.track) return;
         const mediaStreamTrack = publication.track.mediaStreamTrack;
         setRemoteVideos((prev) => {

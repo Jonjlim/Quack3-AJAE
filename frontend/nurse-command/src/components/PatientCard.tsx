@@ -111,7 +111,8 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
         </div>
       </div>
 
-      {/* Row 2: complaint */}
+      {/* Row 2: patient ID + complaint */}
+      <p className="mb-0.5 font-mono text-[11px] tracking-wide text-slate-500">{patient.patient_id}</p>
       <p className="mb-2 line-clamp-1 text-sm text-slate-300">{patient.chief_complaint}</p>
 
       {/* Row 3: HR value + sparkline */}

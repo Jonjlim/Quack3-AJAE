@@ -5,12 +5,15 @@ from fastapi import APIRouter, HTTPException
 from app.services.events import EventBus
 from app.services.state import state_service
 from app.ws.manager import manager
+from app.services.fall_alerts import build_fall_message, should_accept_fall_report
 from shared.schemas.telemetry import (
     AcuityLoad,
     AlertAckRequest,
     AlertAckResponse,
+    BrowserFallReportRequest,
     CameraStatusPayload,
     DemoFallTriggerResponse,
+    FallReportResponse,
     PatientRecord,
     QueueStatus,
 )
@@ -63,6 +66,26 @@ async def acknowledge_alert(alert_id: str, body: AlertAckRequest) -> AlertAckRes
         acknowledged=True,
         acknowledged_at=acknowledged_at,
     )
+
+
+@router.post("/alerts/fall-report", response_model=FallReportResponse)
+async def report_browser_fall(body: BrowserFallReportRequest) -> FallReportResponse:
+    """Ingest a fall detected in the browser and broadcast CRITICAL_FALL to nurses."""
+    if not should_accept_fall_report(body.confidence, body.danger_level):
+        raise HTTPException(
+            status_code=422,
+            detail="Fall report below confidence/danger threshold",
+        )
+
+    message = build_fall_message(
+        body.confidence,
+        body.danger_level,
+        body.coordinates,
+        body.message,
+    )
+    alert = state_service.create_fall_alert(message, patient_id=body.patient_id)
+    await events.alert(alert)
+    return FallReportResponse(alert=alert, broadcast=True, accepted=True)
 
 
 @router.post("/demo/trigger-fall", response_model=DemoFallTriggerResponse)

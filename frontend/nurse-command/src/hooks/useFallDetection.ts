@@ -1,75 +1,48 @@
+import type { BrowserFallReportRequest } from "@shared/types/telemetry";
 import { useEffect, useRef } from "react";
+import { createBrowserFallDetector } from "../lib/browserFallDetector";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-const CLIP_INTERVAL_MS = 30_000; // start a new clip every 30 seconds
-const CLIP_DURATION_MS = 30_000; // each clip is 30 seconds long
-
-function pickMimeType(): string {
-  for (const type of ["video/webm;codecs=vp8", "video/webm", "video/mp4"]) {
-    if (MediaRecorder.isTypeSupported(type)) return type;
-  }
-  return "";
-}
 
 /**
- * Periodically records 5-second clips from the provided MediaStream and POSTs
- * them to the fall-detection endpoint. Fall alerts come back via the nurse
- * WebSocket — this hook only handles the upload side.
+ * Runs fall detection in the browser on the given camera stream.
+ * When a fall is detected, reports it to triage-engine; alerts appear on the nurse WebSocket.
  */
 export function useFallDetection(stream: MediaStream | null, enabled: boolean): void {
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!enabled || !stream) {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
     }
 
-    const mimeType = pickMimeType();
+    if (!enabled || !stream) return;
 
-    const captureAndSend = () => {
-      let recorder: MediaRecorder;
+    cleanupRef.current = createBrowserFallDetector(stream, async (event) => {
+      const body: BrowserFallReportRequest = {
+        confidence: event.confidence,
+        danger_level: event.danger_level,
+        coordinates: event.coordinates ?? null,
+        frame_timestamp: event.frame_timestamp ?? null,
+        source: "browser",
+      };
+
       try {
-        recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        await fetch(`${API_BASE}/api/v1/alerts/fall-report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
       } catch {
-        return;
+        // Nurse dashboard still receives alerts when report succeeds; ignore transient errors
       }
-
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        if (chunks.length === 0) return;
-        const blob = new Blob(chunks, { type: mimeType || "video/webm" });
-        const form = new FormData();
-        form.append("video", blob, "clip.webm");
-        try {
-          await fetch(`${API_BASE}/api/v1/scene-intel/fall-detection`, {
-            method: "POST",
-            body: form,
-          });
-        } catch {
-          // Fall alerts arrive via WebSocket; ignore upload errors silently
-        }
-      };
-
-      recorder.start();
-      setTimeout(() => {
-        if (recorder.state === "recording") recorder.stop();
-      }, CLIP_DURATION_MS);
-    };
-
-    intervalRef.current = setInterval(captureAndSend, CLIP_INTERVAL_MS);
+    });
 
     return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
       }
     };
   }, [enabled, stream]);

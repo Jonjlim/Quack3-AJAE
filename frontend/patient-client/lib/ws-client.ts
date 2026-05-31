@@ -1,35 +1,16 @@
 import { getApiBase, getWsBase } from "@/lib/api-base";
 import { MOCK_QUEUE_STATUS } from "@/lib/mock-data";
-import type {
-  IntakeRequest,
-  IntakeResponse,
-  QueueStatus,
-  TelemetryEnvelope,
-} from "@shared/types/telemetry";
+import type { QueueStatus, TelemetryEnvelope } from "@shared/types/telemetry";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
-export async function submitIntake(data: IntakeRequest): Promise<IntakeResponse> {
-  if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, 400));
-    return {
-      patient_id: `pat-mock-${Date.now().toString(36).slice(-6)}`,
-      queue_position: MOCK_QUEUE_STATUS.queue_position,
-      estimated_wait_minutes: MOCK_QUEUE_STATUS.estimated_wait_minutes,
-      created_at: new Date().toISOString(),
-    };
+/** Validates the patient exists (registered by nurse) before opening the queue view. */
+export async function signInWithPatientId(patientId: string): Promise<QueueStatus> {
+  const id = patientId.trim();
+  if (!id) {
+    throw new Error("Enter the patient ID the nurse gave you.");
   }
-
-  const response = await fetch(`${getApiBase()}/api/v1/intake`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || `Intake failed (${response.status})`);
-  }
-  return response.json() as Promise<IntakeResponse>;
+  return getQueueStatus(id);
 }
 
 export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
@@ -39,6 +20,9 @@ export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
   }
 
   const response = await fetch(`${getApiBase()}/api/v1/queue/${encodeURIComponent(patientId)}`);
+  if (response.status === 404) {
+    throw new Error("Patient ID not found. Ask the nurse for your ID.");
+  }
   if (!response.ok) {
     throw new Error(`Queue status failed (${response.status})`);
   }

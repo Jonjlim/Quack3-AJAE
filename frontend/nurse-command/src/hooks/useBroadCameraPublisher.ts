@@ -16,6 +16,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 export function useBroadCameraPublisher() {
   const [status, setStatus] = useState<BroadCameraStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const roomRef = useRef<Room | null>(null);
   const videoTrackRef = useRef<LocalVideoTrack | null>(null);
   const intentionalDisconnectRef = useRef(false);
@@ -26,6 +27,7 @@ export function useBroadCameraPublisher() {
       track.stop();
       videoTrackRef.current = null;
     }
+    setStream(null);
     const room = roomRef.current;
     if (room) {
       await room.disconnect();
@@ -73,6 +75,7 @@ export function useBroadCameraPublisher() {
       });
       videoTrackRef.current = videoTrack;
       await room.localParticipant.publishTrack(videoTrack);
+      setStream(new MediaStream([videoTrack.mediaStreamTrack]));
 
       setStatus("live");
     } catch (err) {
@@ -97,5 +100,5 @@ export function useBroadCameraPublisher() {
     };
   }, [connect, cleanup]);
 
-  return { status, errorMessage, connect, disconnect };
+  return { status, errorMessage, stream, connect, disconnect };
 }
