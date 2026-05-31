@@ -9,10 +9,10 @@ export function VitalsPill({ status }: VitalsPillProps) {
   const showHr = headline.includes("bpm") && /^\d+/.test(headline.trim());
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
+    <div className="rounded-xl border border-border bg-surface-2 px-4 py-3">
       {showHr ? (
         <div className="flex items-baseline gap-3">
-          <span className="text-2xl font-semibold tabular-nums text-ink">
+          <span className="text-2xl font-bold tabular-nums" style={{ color: "var(--amber)" }}>
             {headline.replace(" bpm", "")}
           </span>
           <div>

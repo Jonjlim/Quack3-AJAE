@@ -27,16 +27,18 @@ export function BottomSheet({ open, onClose, children, title }: BottomSheetProps
       <button
         type="button"
         aria-label="Close"
-        className="fixed inset-0 z-40 bg-black/40"
+        className="fixed inset-0 z-40"
+        style={{ background: "rgba(15, 23, 42, 0.5)" }}
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "sheet-title" : undefined}
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-lg rounded-t-xl border border-neutral-200 bg-surface px-5 pb-8 pt-5 shadow-lg transition-transform"
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-lg rounded-t-2xl border border-border bg-surface px-5 pb-8 pt-5"
+        style={{ boxShadow: "0 -8px 30px rgba(0,0,0,0.12)" }}
       >
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-200" aria-hidden />
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" aria-hidden />
         {title && (
           <h2 id="sheet-title" className="text-section-title mb-3">
             {title}

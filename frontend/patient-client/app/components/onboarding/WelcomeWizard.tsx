@@ -46,10 +46,10 @@ export function WelcomeWizard({ onSignIn }: WelcomeWizardProps) {
   }
 
   return (
-    <PageShell>
+    <PageShell title="Patient Portal" subtitle="Sign in with your patient ID">
       <Surface>
         <h1 className="text-section-title">Enter your patient ID</h1>
-        <p className="mt-3 text-base leading-relaxed text-muted">
+        <p className="mt-3 text-sm leading-relaxed text-muted">
           After check-in, your nurse creates a chart and gives you a patient ID. Enter it below to
           see your place in line and optional check-in tools.
         </p>
@@ -67,12 +67,13 @@ export function WelcomeWizard({ onSignIn }: WelcomeWizardProps) {
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
             placeholder="e.g. pat-a1b2c3"
-            className="mt-2 w-full rounded-lg border border-neutral-300 bg-surface px-4 py-4 font-mono text-lg text-ink placeholder:text-neutral-400 focus:border-sage focus:outline-none focus:ring-2 focus:ring-sage/20 disabled:opacity-60"
+            className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 font-mono text-lg text-ink placeholder:text-dim focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
           />
 
           {error && (
             <p
-              className="mt-4 rounded-lg border border-attention/30 bg-attention/5 px-4 py-3 text-sm text-attention"
+              className="mt-4 rounded-xl border px-4 py-3 text-sm"
+              style={{ background: "#fef2f2", borderColor: "#fca5a5", color: "#dc2626" }}
               role="alert"
             >
               {error}

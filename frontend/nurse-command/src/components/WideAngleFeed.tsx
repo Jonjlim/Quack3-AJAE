@@ -51,18 +51,10 @@ export function WideAngleFeed({
   videoLabels = {},
   onRetry,
 }: WideAngleFeedProps) {
-  const { roomVideos, patientVideos } = useMemo(() => {
-    const room: RemoteVideoTrack[] = [];
-    const patient: RemoteVideoTrack[] = [];
-    for (const video of remoteVideos) {
-      if (isRoomCameraIdentity(video.identity)) {
-        room.push(video);
-      } else {
-        patient.push(video);
-      }
-    }
-    return { roomVideos: room, patientVideos: patient };
-  }, [remoteVideos]);
+  const roomVideos = useMemo(
+    () => remoteVideos.filter((video) => isRoomCameraIdentity(video.identity)),
+    [remoteVideos],
+  );
 
   const roomGridClass =
     roomVideos.length <= 1
@@ -70,8 +62,6 @@ export function WideAngleFeed({
       : roomVideos.length === 2
         ? "grid-cols-2"
         : "grid-cols-2 lg:grid-cols-3";
-
-  const hasAnyVideo = remoteVideos.length > 0;
 
   return (
     <section
@@ -89,9 +79,14 @@ export function WideAngleFeed({
       >
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>
-            Live video
+            Room cameras
           </h2>
           <FeedStatusBadge connected={connected} connecting={connecting} />
+          {roomVideos.length > 0 && (
+            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+              {roomVideos.length} live
+            </span>
+          )}
         </div>
         {error && onRetry && (
           <button
@@ -109,29 +104,11 @@ export function WideAngleFeed({
         )}
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
-        {/* Room cameras — large presenter stage */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
         <div
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl"
           style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
         >
-          <div
-            className="flex flex-shrink-0 items-center gap-2 px-3 py-2"
-            style={{ borderBottom: "1px solid #e2e8f0" }}
-          >
-            <span
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: "var(--purple)" }}
-            >
-              Room cameras
-            </span>
-            {roomVideos.length > 0 && (
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {roomVideos.length} live
-              </span>
-            )}
-          </div>
-
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
             {connected && roomVideos.length > 0 ? (
               <div
@@ -165,65 +142,16 @@ export function WideAngleFeed({
                       ? "Waiting for room cameras — open /camera on a device"
                       : "Room feed offline"}
                 </p>
+                <p className="text-[10px]" style={{ color: "var(--text-dim)" }}>
+                  Patient cameras appear on each patient card and in their detail view
+                </p>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Patient cameras — compact filmstrip */}
-        <div
-          className="flex flex-shrink-0 flex-col overflow-hidden rounded-xl"
-          style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            maxHeight: patientVideos.length > 0 ? "28%" : "auto",
-            minHeight: patientVideos.length > 0 ? 112 : undefined,
-          }}
-        >
-          <div
-            className="flex flex-shrink-0 items-center gap-2 px-3 py-2"
-            style={{ borderBottom: "1px solid #e2e8f0" }}
-          >
-            <span
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: "var(--accent)" }}
-            >
-              Patient cameras
-            </span>
-            {patientVideos.length > 0 && (
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {patientVideos.length} live
-              </span>
-            )}
-          </div>
-
-          <div className="flex min-h-[88px] items-center p-2">
-            {connected && patientVideos.length > 0 ? (
-              <div className="flex w-full gap-2 overflow-x-auto pb-1">
-                {patientVideos.map((video) => (
-                  <RemoteVideo
-                    key={video.identity}
-                    feedRole="patient"
-                    track={video.mediaStreamTrack}
-                    className="aspect-video h-20 w-32 flex-shrink-0 rounded-lg sm:h-24 sm:w-40"
-                    label={videoLabels[video.identity] ?? video.identity}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="w-full py-3 text-center text-[10px]" style={{ color: "var(--text-dim)" }}>
-                {connected
-                  ? hasAnyVideo && roomVideos.length > 0
-                    ? "No patient cameras yet"
-                    : "Patient streams appear when they enable their camera"
-                  : "—"}
-              </p>
             )}
           </div>
         </div>
 
         {error && (
-          <p className="flex-shrink-0 text-xs font-medium" style={{ color: "var(--critical)" }} role="alert">
+          <p className="mt-2 flex-shrink-0 text-xs font-medium" style={{ color: "var(--critical)" }} role="alert">
             {error}
           </p>
         )}

@@ -1,16 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #f4f4f2;
+  --color-canvas: #f0f2f5;
   --color-surface: #ffffff;
-  --color-ink: #1a1a1a;
-  --color-muted: #525252;
-  --color-sage: #4a6b5d;
-  --color-ocean: #4f6b78;
-  --color-clay: #8b7355;
-  --color-attention: #b85c4a;
-  --color-calm: #4a7c59;
+  --color-surface-2: #f8fafc;
+  --color-ink: #1e293b;
+  --color-muted: #64748b;
+  --color-dim: #94a3b8;
+  --color-accent: #2563eb;
+  --color-sage: #2563eb;
+  --color-ocean: #2563eb;
+  --color-clay: #d97706;
+  --color-attention: #dc2626;
+  --color-calm: #15803d;
+  --color-border: #e2e8f0;
   --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --accent: #2563eb;
+  --accent-dim: rgba(37, 99, 235, 0.1);
+  --text: #1e293b;
+  --text-2: #475569;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --critical: #dc2626;
+  --amber: #d97706;
+  --glass-border: #e2e8f0;
+  --glass-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 @layer base {
@@ -35,23 +55,34 @@
   }
 }
 
+.cc-header-stripe {
+  border-top: 3px solid var(--accent);
+}
+
 @layer utilities {
   .text-queue-number {
     font-size: 2.25rem;
-    font-weight: 600;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
+    color: var(--text);
   }
 
   .text-section-title {
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     line-height: 1.3;
-    color: var(--color-ink);
+    color: var(--text);
+  }
+
+  .er-panel {
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    box-shadow: var(--glass-shadow);
   }
 }
 
-/* Un-mirror patient camera preview (video only). */
 .camera-feed-correct > video {
   transform: scaleX(-1);
 }

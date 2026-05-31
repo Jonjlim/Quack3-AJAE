@@ -19,11 +19,11 @@ export function DepartmentStatus({ data }: DepartmentStatusProps) {
       <p className="mt-1 text-sm text-muted">Overview for patients in the waiting room</p>
 
       <dl className="mt-5 space-y-4">
-        <div className="flex items-baseline justify-between gap-4 border-b border-neutral-100 pb-3">
+        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
           <dt className="text-sm text-muted">Patients waiting</dt>
           <dd className="text-lg font-semibold tabular-nums text-ink">{data.total_waiting}</dd>
         </div>
-        <div className="flex items-baseline justify-between gap-4 border-b border-neutral-100 pb-3">
+        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
           <dt className="text-sm text-muted">Emergent cases ahead</dt>
           <dd className="text-lg font-semibold tabular-nums text-ink">{data.emergent_count}</dd>
         </div>
@@ -39,14 +39,14 @@ export function DepartmentStatus({ data }: DepartmentStatusProps) {
           <span>{loadPercent}%</span>
         </div>
         <div
-          className="mt-1.5 h-2 overflow-hidden rounded-full bg-neutral-100"
+          className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2"
           role="progressbar"
           aria-valuenow={loadPercent}
           aria-valuemin={0}
           aria-valuemax={100}
         >
           <div
-            className="h-full rounded-full bg-sage transition-[width] duration-300"
+            className="h-full rounded-full bg-accent transition-[width] duration-300"
             style={{ width: `${loadPercent}%` }}
           />
         </div>

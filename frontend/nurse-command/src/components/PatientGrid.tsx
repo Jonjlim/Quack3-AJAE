@@ -1,4 +1,5 @@
-import type { AcuityLevel, BiometricReading, PatientRecord } from "@shared/types/telemetry";
+import type { AcuityLevel, PatientRecord } from "@shared/types/telemetry";
+import type { RemoteVideoTrack } from "../hooks/useLiveKitRoom";
 import { PatientCard } from "./PatientCard";
 
 // Base priority — sets the starting rank by clinical severity
@@ -32,16 +33,16 @@ interface PatientGridProps {
   patients: PatientRecord[];
   selectedPatientId: string | null;
   onSelect: (patient: PatientRecord) => void;
-  hrHistory: Record<string, BiometricReading[]>;
   alertCountByPatient: Record<string, number>;
+  getVideoForIdentity: (identity: string) => RemoteVideoTrack | null;
 }
 
 export function PatientGrid({
   patients,
   selectedPatientId,
   onSelect,
-  hrHistory,
   alertCountByPatient,
+  getVideoForIdentity,
 }: PatientGridProps) {
   const sorted = [...patients].sort(
     (a, b) =>
@@ -73,8 +74,8 @@ export function PatientGrid({
             patient={patient}
             isSelected={patient.patient_id === selectedPatientId}
             onSelect={onSelect}
-            hrData={hrHistory[patient.patient_id] ?? []}
             alertCount={alertCountByPatient[patient.patient_id] ?? 0}
+            patientVideo={getVideoForIdentity(patient.patient_id)}
           />
         ))}
       </div>

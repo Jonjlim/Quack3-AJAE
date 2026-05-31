@@ -14,9 +14,9 @@ export function QueueHero({ queue, wsConnected, isMockMode, loading }: QueueHero
   if (loading) {
     return (
       <Surface>
-        <div className="h-4 w-32 animate-pulse rounded bg-neutral-100" />
-        <div className="mt-4 h-10 w-16 animate-pulse rounded bg-neutral-100" />
-        <div className="mt-4 h-4 w-full animate-pulse rounded bg-neutral-100" />
+        <div className="h-4 w-32 animate-pulse rounded bg-surface-2" />
+        <div className="mt-4 h-10 w-16 animate-pulse rounded bg-surface-2" />
+        <div className="mt-4 h-4 w-full animate-pulse rounded bg-surface-2" />
       </Surface>
     );
   }
@@ -31,7 +31,7 @@ export function QueueHero({ queue, wsConnected, isMockMode, loading }: QueueHero
       <p className="text-queue-number mt-2 text-ink">{queue.queue_position}</p>
       <p className="mt-2 text-base text-ink">{statusLabel(queue.status)}</p>
 
-      <dl className="mt-5 space-y-3 border-t border-neutral-200 pt-5">
+      <dl className="mt-5 space-y-3 border-t border-border pt-5">
         <div>
           <dt className="text-sm font-medium text-muted">Estimated wait</dt>
           <dd className="mt-0.5 text-lg font-semibold text-ink">

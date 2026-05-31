@@ -49,6 +49,20 @@ function appendHistory(
   return { ...prev, [patientId]: [...existing.slice(-19), reading] };
 }
 
+function upsertPatient(prev: PatientRecord[], patient: PatientRecord): PatientRecord[] {
+  const idx = prev.findIndex((p) => p.patient_id === patient.patient_id);
+  if (idx === -1) return [...prev, patient];
+  return prev.map((p) => (p.patient_id === patient.patient_id ? patient : p));
+}
+
+function dedupePatients(patients: PatientRecord[]): PatientRecord[] {
+  const byId = new Map<string, PatientRecord>();
+  for (const patient of patients) {
+    byId.set(patient.patient_id, patient);
+  }
+  return Array.from(byId.values());
+}
+
 export function useTriageSocket() {
   const rawPatients = MOCK_PATIENTS;
   const patientCountRef = useRef(rawPatients.length);
@@ -76,7 +90,7 @@ export function useTriageSocket() {
         throw new Error(`Patients API returned ${response.status}`);
       }
       const list = (await response.json()) as PatientRecord[];
-      setPatients(list);
+      setPatients(dedupePatients(list));
       setTelemetryError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not load patients";
@@ -130,12 +144,10 @@ export function useTriageSocket() {
             const envelope = JSON.parse(event.data as string) as TelemetryEnvelope;
             if (envelope.type === "PATIENTS_SNAPSHOT") {
               const payload = envelope.payload as unknown as { patients: PatientRecord[] };
-              setPatients(payload.patients);
+              setPatients(dedupePatients(payload.patients));
             } else if (envelope.type === "PATIENT_UPDATE") {
               const updated = envelope.payload as unknown as PatientRecord;
-              setPatients((prev) =>
-                prev.map((p) => (p.patient_id === updated.patient_id ? updated : p)),
-              );
+              setPatients((prev) => upsertPatient(prev, updated));
             } else if (envelope.type === "ALERT") {
               const alert = envelope.payload as unknown as AlertEvent;
               setActiveAlerts((prev) => [
@@ -256,7 +268,7 @@ export function useTriageSocket() {
         last_biometric: null,
         created_at: new Date().toISOString(),
       };
-      setPatients((prev) => [...prev, newPatient]);
+      setPatients((prev) => upsertPatient(prev, newPatient));
       return { display_name, patient_id: newPatient.patient_id };
     }
 
@@ -298,7 +310,7 @@ export function useTriageSocket() {
       last_biometric: null,
       created_at: intake.created_at,
     };
-    setPatients((prev) => [...prev, newPatient]);
+    setPatients((prev) => upsertPatient(prev, newPatient));
     return { display_name, patient_id };
   }, []);
 
