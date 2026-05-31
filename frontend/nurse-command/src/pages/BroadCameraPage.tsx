@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useBroadCameraPublisher } from "../hooks/useBroadCameraPublisher";
-import { useFallDetection } from "../hooks/useFallDetection";
+import { useFallDetection, type FallDetectionMode } from "../hooks/useFallDetection";
 
 const ROOM_NAME_KEY = "er-overwatch-room-camera-name";
 
@@ -43,6 +43,7 @@ export default function BroadCameraPage() {
   const [roomNameInput, setRoomNameInput] = useState("");
   const [activeRoomName, setActiveRoomName] = useState<string | null>(null);
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString("en-GB"));
+  const [detectionMode, setDetectionMode] = useState<FallDetectionMode>("snapshot");
 
   useEffect(() => {
     const fromUrl = readRoomFromUrl();
@@ -61,7 +62,7 @@ export default function BroadCameraPage() {
   const wasReplaced = status === "replaced";
   const isSetup = activeRoomName === null;
 
-  const { cvReady } = useFallDetection(stream, isLive, activeRoomName);
+  const { cvReady } = useFallDetection(stream, isLive, activeRoomName, detectionMode);
 
   function startRoomFeed() {
     const label = roomNameInput.trim();
@@ -141,6 +142,35 @@ export default function BroadCameraPage() {
                         AI Active
                       </span>
                     )}
+                  </div>
+
+                  {/* Detection mode toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-dim)]">
+                      Detection
+                    </span>
+                    <div className="inline-flex overflow-hidden border border-[var(--border)]">
+                      <button
+                        type="button"
+                        onClick={() => setDetectionMode("snapshot")}
+                        className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors ${detectionMode === "snapshot"
+                          ? "bg-slate-800 text-white"
+                          : "bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]"
+                          }`}
+                      >
+                        Images
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDetectionMode("video")}
+                        className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors ${detectionMode === "video"
+                          ? "bg-slate-800 text-white"
+                          : "bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]"
+                          }`}
+                      >
+                        Video
+                      </button>
+                    </div>
                   </div>
                   <p className="text-[11px] text-[var(--text-muted)]">
                     Publishing 720p room video for fall detection. Nurses see &quot;{activeRoomName}&quot;
