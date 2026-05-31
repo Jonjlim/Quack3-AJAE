@@ -12,6 +12,7 @@ export const MOCK_PATIENTS: PatientRecord[] = [
     wait_minutes: 112,
     chief_complaint: "Chest pain, shortness of breath",
     camera_enabled: true,
+    triage_reasoning: null,
     last_biometric: {
       patient_id: "pat-001",
       heart_rate_bpm: 118,
@@ -34,6 +35,7 @@ export const MOCK_PATIENTS: PatientRecord[] = [
     wait_minutes: 48,
     chief_complaint: "Severe abdominal pain",
     camera_enabled: true,
+    triage_reasoning: null,
     last_biometric: {
       patient_id: "pat-002",
       heart_rate_bpm: 95,
@@ -56,6 +58,7 @@ export const MOCK_PATIENTS: PatientRecord[] = [
     wait_minutes: 22,
     chief_complaint: "Lower back pain",
     camera_enabled: false,
+    triage_reasoning: null,
     last_biometric: {
       patient_id: "pat-003",
       heart_rate_bpm: 70,
@@ -78,6 +81,7 @@ export const MOCK_PATIENTS: PatientRecord[] = [
     wait_minutes: 11,
     chief_complaint: "Sprained ankle",
     camera_enabled: false,
+    triage_reasoning: null,
     last_biometric: {
       patient_id: "pat-004",
       heart_rate_bpm: 76,

@@ -8,7 +8,10 @@ import {
 } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "../lib/auth-fetch";
-import { BROAD_CAMERA_IDENTITY, ER_WAITING_ROOM } from "../lib/livekit-constants";
+import {
+  ER_WAITING_ROOM,
+  roomCameraIdentity,
+} from "../lib/livekit-constants";
 
 export type BroadCameraStatus = "starting" | "live" | "replaced" | "error" | "idle";
 
@@ -53,7 +56,7 @@ function formatCameraError(err: unknown): string {
   return message;
 }
 
-export function useBroadCameraPublisher() {
+export function useBroadCameraPublisher(roomLabel: string | null) {
   const [status, setStatus] = useState<BroadCameraStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -65,38 +68,44 @@ export function useBroadCameraPublisher() {
     const track = videoTrackRef.current;
     if (track) {
       track.stop();
+      track.detach();
       videoTrackRef.current = null;
     }
     setStream(null);
-    const room = roomRef.current;
-    if (room) {
-      await room.disconnect();
+    const lkRoom = roomRef.current;
+    if (lkRoom) {
+      await lkRoom.disconnect();
       roomRef.current = null;
     }
   }, []);
 
   const connect = useCallback(async () => {
+    const label = roomLabel?.trim();
+    if (!label) return;
+
     intentionalDisconnectRef.current = false;
     setStatus("starting");
     setErrorMessage(null);
 
     try {
+      const identity = roomCameraIdentity(label);
       const response = await authFetch(`${API_BASE}/api/v1/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           room: ER_WAITING_ROOM,
-          identity: BROAD_CAMERA_IDENTITY,
+          identity,
           role: "broad_camera",
+          display_name: label,
         }),
       });
       if (!response.ok) throw new Error("Could not obtain LiveKit token");
 
       const tokenData = (await response.json()) as LiveKitTokenResponse;
-      const room = new Room({ adaptiveStream: true, dynacast: true });
-      roomRef.current = room;
+      const lkRoom = new Room({ adaptiveStream: true, dynacast: true });
+      roomRef.current = lkRoom;
 
-      room.on(RoomEvent.Disconnected, (reason) => {
+      lkRoom.on(RoomEvent.Disconnected, (reason) => {
         if (intentionalDisconnectRef.current) return;
         if (reason === DisconnectReason.DUPLICATE_IDENTITY) {
           setStatus("replaced");
@@ -107,11 +116,11 @@ export function useBroadCameraPublisher() {
         }
       });
 
-      await room.connect(tokenData.url, tokenData.token);
+      await lkRoom.connect(tokenData.url, tokenData.token);
 
       const videoTrack = await createRoomCameraTrack();
       videoTrackRef.current = videoTrack;
-      await room.localParticipant.publishTrack(videoTrack);
+      await lkRoom.localParticipant.publishTrack(videoTrack);
       setStream(new MediaStream([videoTrack.mediaStreamTrack]));
 
       setStatus("live");
@@ -120,7 +129,7 @@ export function useBroadCameraPublisher() {
       setStatus("error");
       setErrorMessage(formatCameraError(err));
     }
-  }, [cleanup]);
+  }, [cleanup, roomLabel]);
 
   const disconnect = useCallback(async () => {
     intentionalDisconnectRef.current = true;
@@ -130,12 +139,19 @@ export function useBroadCameraPublisher() {
   }, [cleanup]);
 
   useEffect(() => {
+    const label = roomLabel?.trim();
+    if (!label) {
+      void cleanup();
+      setStatus("idle");
+      return;
+    }
+
     void connect();
     return () => {
       intentionalDisconnectRef.current = true;
       void cleanup();
     };
-  }, [connect, cleanup]);
+  }, [roomLabel, connect, cleanup]);
 
   return { status, errorMessage, stream, connect, disconnect };
 }

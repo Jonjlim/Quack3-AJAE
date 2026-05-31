@@ -50,3 +50,8 @@
     color: var(--color-ink);
   }
 }
+
+/* Un-mirror patient camera preview (video only). */
+.camera-feed-correct > video {
+  transform: scaleX(-1);
+}

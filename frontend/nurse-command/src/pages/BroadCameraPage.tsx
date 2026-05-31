@@ -1,6 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useBroadCameraPublisher } from "../hooks/useBroadCameraPublisher";
 import { useFallDetection } from "../hooks/useFallDetection";
+
+const ROOM_NAME_KEY = "er-overwatch-room-camera-name";
+
+function readRoomFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  const param = new URLSearchParams(window.location.search).get("room");
+  return param?.trim() ?? "";
+}
+
+function readStoredRoomName(): string {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem(ROOM_NAME_KEY)?.trim() ?? "";
+}
 
 const SETUP_TIPS = [
   "Use the rear camera and clean the lens before judging.",
@@ -19,19 +32,39 @@ function StatusIndicator({ live }: { live: boolean }) {
 }
 
 export default function BroadCameraPage() {
-  const { status, errorMessage, stream, connect } = useBroadCameraPublisher();
+  const [roomNameInput, setRoomNameInput] = useState("");
+  const [activeRoomName, setActiveRoomName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fromUrl = readRoomFromUrl();
+    const fromStore = readStoredRoomName();
+    setRoomNameInput(fromUrl || fromStore);
+  }, []);
+
+  const { status, errorMessage, stream, connect } = useBroadCameraPublisher(activeRoomName);
   const isLive = status === "live";
   const isStarting = status === "starting";
   const wasReplaced = status === "replaced";
+  const isSetup = activeRoomName === null;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { cvReady } = useFallDetection(stream, isLive, canvasRef);
+  const { cvReady } = useFallDetection(stream, isLive, canvasRef, activeRoomName);
 
-  // Mirror stream into the visible video element
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream;
   }, [stream]);
+
+  function startRoomFeed() {
+    const label = roomNameInput.trim();
+    if (label.length < 2) return;
+    sessionStorage.setItem(ROOM_NAME_KEY, label);
+    setActiveRoomName(label);
+  }
+
+  function changeRoom() {
+    setActiveRoomName(null);
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-white">
@@ -44,86 +77,142 @@ export default function BroadCameraPage() {
           Sign in with Google first. On a laptop, the front camera is used if no rear camera exists.
         </p>
 
-        <div className="mt-6 flex flex-col items-center gap-4">
-          <StatusIndicator live={isLive} />
+        {isSetup ? (
+          <div className="mt-6 flex flex-col items-stretch gap-4 text-left">
+            <p className="text-sm text-slate-400">
+              Name this room or bay so nurses see it on the dashboard. Each name can have one
+              live feed at a time.
+            </p>
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Room name
+              </span>
+              <input
+                type="text"
+                value={roomNameInput}
+                onChange={(e) => setRoomNameInput(e.target.value)}
+                placeholder="e.g. Triage Bay A"
+                className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-lg text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") startRoomFeed();
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={startRoomFeed}
+              disabled={roomNameInput.trim().length < 2}
+              className="rounded-xl bg-emerald-600 px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Start camera for this room
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-col items-center gap-4">
+            <p className="text-sm font-medium text-blue-300">{activeRoomName}</p>
+            <StatusIndicator live={isLive} />
 
-          {isLive && (
-            <>
-              <div className="flex items-center gap-2">
-                <p className="text-xl font-semibold text-emerald-300">Live</p>
-                {isLive && !cvReady && (
-                  <span className="animate-pulse rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
-                    CV Loading…
-                  </span>
-                )}
-                {cvReady && (
-                  <span className="rounded-full bg-violet-900 px-2 py-0.5 text-xs font-medium text-violet-300">
-                    CV Active
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-slate-400">
-                Publishing 720p room video. Fall detection runs locally on this device.
-              </p>
+            {isLive && (
+              <>
+                <div className="flex items-center gap-2">
+                  <p className="text-xl font-semibold text-emerald-300">Live</p>
+                  {!cvReady && (
+                    <span className="animate-pulse rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
+                      CV Loading…
+                    </span>
+                  )}
+                  {cvReady && (
+                    <span className="rounded-full bg-violet-900 px-2 py-0.5 text-xs font-medium text-violet-300">
+                      CV Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-400">
+                  Publishing 720p room video. Fall detection runs on this device. Nurses see
+                  &quot;{activeRoomName}&quot; on the wide-angle feed.
+                </p>
+                <div className="relative w-full overflow-hidden rounded-xl bg-black">
+                  <div className="camera-feed-correct relative w-full">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full"
+                    />
+                  </div>
+                  <canvas
+                    ref={canvasRef}
+                    className="pointer-events-none absolute inset-0 h-full w-full"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={changeRoom}
+                  className="text-sm text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+                >
+                  Use a different room name
+                </button>
+              </>
+            )}
 
-              {/* Live preview with skeleton overlay */}
-              <div className="relative w-full overflow-hidden rounded-xl bg-black">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full"
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="pointer-events-none absolute inset-0 h-full w-full"
-                />
-              </div>
-            </>
-          )}
+            {isStarting && (
+              <>
+                <p className="text-xl font-semibold text-blue-300">Starting camera…</p>
+                <p className="text-sm text-slate-400">
+                  Opening the camera at 720p and connecting to LiveKit for {activeRoomName}.
+                </p>
+              </>
+            )}
 
-          {isStarting && (
-            <>
-              <p className="text-xl font-semibold text-blue-300">Starting camera…</p>
-              <p className="text-sm text-slate-400">
-                Opening the rear camera at 720p and connecting to LiveKit.
-              </p>
-            </>
-          )}
+            {wasReplaced && (
+              <>
+                <p className="text-xl font-semibold text-amber-300">Not recording</p>
+                <p className="text-sm text-slate-400">
+                  Another device is already streaming &quot;{activeRoomName}&quot;. Stop the other
+                  feed or pick a different room name.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void connect()}
+                  className="mt-4 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+                >
+                  Retry this room
+                </button>
+                <button
+                  type="button"
+                  onClick={changeRoom}
+                  className="text-sm text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+                >
+                  Choose another room name
+                </button>
+              </>
+            )}
 
-          {wasReplaced && (
-            <>
-              <p className="text-xl font-semibold text-amber-300">Not recording</p>
-              <p className="text-sm text-slate-400">
-                Another device took over this camera feed. Only one room camera can be live at a time.
-              </p>
-              <button
-                type="button"
-                onClick={() => void connect()}
-                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
-              >
-                Take over feed
-              </button>
-            </>
-          )}
-
-          {status === "error" && (
-            <>
-              <p className="text-xl font-semibold text-red-300">Not recording</p>
-              <p className="text-sm text-slate-400">
-                {errorMessage ?? "Could not start the camera feed."}
-              </p>
-              <button
-                type="button"
-                onClick={() => void connect()}
-                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
-              >
-                Retry
-              </button>
-            </>
-          )}
-        </div>
+            {status === "error" && (
+              <>
+                <p className="text-xl font-semibold text-red-300">Not recording</p>
+                <p className="text-sm text-slate-400">
+                  {errorMessage ?? "Could not start the camera feed."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void connect()}
+                  className="mt-4 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  onClick={changeRoom}
+                  className="text-sm text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+                >
+                  Change room name
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <section className="mt-5 w-full max-w-lg rounded-xl border border-slate-800 bg-slate-900/70 p-4 text-left">
@@ -149,4 +238,3 @@ export default function BroadCameraPage() {
     </div>
   );
 }
-

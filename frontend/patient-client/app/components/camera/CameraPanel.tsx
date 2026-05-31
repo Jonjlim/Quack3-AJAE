@@ -36,7 +36,7 @@ export function CameraPanel({ patientId, onCameraChange }: CameraPanelProps) {
         )}
 
         {enabled && (
-          <div className="relative overflow-hidden rounded-lg border border-neutral-200">
+          <div className="camera-feed-correct relative overflow-hidden rounded-lg border border-neutral-200">
             <video
               ref={videoRef}
               autoPlay

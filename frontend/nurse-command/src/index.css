@@ -17,3 +17,8 @@
 .alert-badge-pulse {
   animation: badge-ping 1s ease-in-out infinite;
 }
+
+/* Un-mirror video display only — CV canvases draw in corrected space (no CSS flip). */
+.camera-feed-correct > video {
+  transform: scaleX(-1);
+}

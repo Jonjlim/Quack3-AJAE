@@ -102,6 +102,7 @@ export interface LiveKitTokenRequest {
   room: string;
   identity: string;
   role: LiveKitRole;
+  display_name?: string | null;
 }
 
 export interface LiveKitTokenResponse {

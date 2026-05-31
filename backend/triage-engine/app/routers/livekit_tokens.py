@@ -33,10 +33,11 @@ async def create_livekit_token(
         can_publish=body.role.value in ("patient", "broad_camera"),
         can_subscribe=True,
     )
+    participant_name = (body.display_name or "").strip() or body.identity
     token = (
         api.AccessToken(settings.livekit_api_key, settings.livekit_api_secret)
         .with_identity(body.identity)
-        .with_name(body.identity)
+        .with_name(participant_name)
         .with_grants(grant)
         .with_ttl(timedelta(hours=6))
         .to_jwt()
