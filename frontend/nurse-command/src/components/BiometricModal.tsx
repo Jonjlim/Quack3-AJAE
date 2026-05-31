@@ -112,39 +112,43 @@ export function BiometricModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.78)" }}
+      style={{ background: "rgba(15,23,42,0.50)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-xl"
-        style={{ background: "#0d1526", border: `2px solid ${acuityColor}35` }}
+        className="w-full max-w-xl overflow-hidden rounded-2xl"
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.20), 0 8px 20px rgba(0,0,0,0.08)",
+        }}
       >
         <div
-          className="flex items-start justify-between px-5 py-4"
-          style={{ background: "#111d33", borderBottom: "1px solid #1e293b" }}
+          className="flex items-start justify-between px-5 py-5"
+          style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}
         >
           <div>
-            <p className="mb-1 font-mono text-xs tracking-wide text-slate-500">{patient.patient_id}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-white">{patient.display_name}</span>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-2xl font-black" style={{ color: "var(--text)" }}>{patient.display_name}</span>
               <span
-                className="rounded px-2 py-0.5 text-xs font-bold"
-                style={{ background: acuityColor + "25", color: acuityColor }}
+                className="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                style={{ background: acuityColor + "18", color: acuityColor }}
               >
-                T{triageNum} · {patient.acuity.replace("_", " ")}
-              </span>
-              <span className="text-xs font-semibold uppercase" style={{ color: acuityColor }}>
-                {patient.status}
+                T{triageNum}
               </span>
             </div>
-            <p className="mt-0.5 text-sm text-slate-400">{patient.chief_complaint}</p>
+            <p className="text-sm" style={{ color: "var(--text-2)" }}>{patient.chief_complaint}</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+              {patient.acuity.replace(/_/g, " ")} · {patient.status}
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-700 hover:text-white"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm transition-all"
+            style={{ color: "var(--text-muted)", background: "#f1f5f9" }}
           >
             ✕
           </button>
@@ -154,13 +158,13 @@ export function BiometricModal({
           {badge && (
             <div className="flex items-center gap-2">
               <span
-                className="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide"
-                style={{ background: badge.color + "22", color: badge.color, border: `1px solid ${badge.color}55` }}
+                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                style={{ background: badge.color + "14", color: badge.color, border: `1px solid ${badge.color}28` }}
               >
                 Vitals · {badge.label}
               </span>
               {latest && latest.confidence > 0 && (
-                <span className="text-xs text-slate-500">
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                   {Math.round(latest.confidence * 100)}% confidence
                 </span>
               )}
@@ -191,7 +195,7 @@ export function BiometricModal({
 
           {chartData.length > 1 && (
             <div>
-              <p className="mb-2 text-xs uppercase tracking-widest text-slate-500">
+              <p className="mb-2 text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                 HR Trend — last {chartData.length} readings (shaded = CI)
               </p>
               <div style={{ height: 130 }}>
@@ -200,15 +204,16 @@ export function BiometricModal({
                     <XAxis dataKey="recorded_at" hide />
                     <YAxis
                       domain={["auto", "auto"]}
-                      tick={{ fill: "#475569", fontSize: 10 }}
+                      tick={{ fill: "#94a3b8", fontSize: 10 }}
                       width={36}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#1e293b",
-                        border: "1px solid #334155",
-                        borderRadius: "6px",
+                        background: "rgba(255,255,255,0.96)",
+                        border: "1px solid rgba(0,0,0,0.10)",
+                        borderRadius: "8px",
                         fontSize: "12px",
+                        color: "#111827",
                       }}
                       formatter={(v: unknown, name: string) => {
                         if (name === "heart_rate_bpm") return [`${v} bpm`, "HR"];
@@ -238,7 +243,7 @@ export function BiometricModal({
                       type="monotone"
                       dataKey="hr_low"
                       stroke="none"
-                      fill="#0d1526"
+                      fill="#ffffff"
                       fillOpacity={1}
                       isAnimationActive={false}
                     />
@@ -267,8 +272,8 @@ export function BiometricModal({
 
           {patient.camera_enabled && (
             <div
-              className="overflow-hidden rounded-lg"
-              style={{ background: "#080f1c", border: "1px solid #1e293b", minHeight: 96 }}
+              className="overflow-hidden rounded-xl"
+              style={{ background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.08)", minHeight: 96 }}
             >
               {patientVideo ? (
                 <RemoteVideo
@@ -278,7 +283,7 @@ export function BiometricModal({
                 />
               ) : (
                 <div className="flex h-24 items-center justify-center">
-                  <span className="text-xs text-slate-600">
+                  <span className="text-[10px]" style={{ color: "var(--text-dim)" }}>
                     Connect LiveKit feed on dashboard to view stream
                   </span>
                 </div>
@@ -293,11 +298,11 @@ export function BiometricModal({
                 onEscalate(patient.patient_id);
                 onClose();
               }}
-              className="flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
-                background: "#E24B4A18",
-                color: "#E24B4A",
-                border: "1px solid #E24B4A45",
+                background: "rgba(220,38,38,0.08)",
+                color: "var(--critical)",
+                border: "1px solid rgba(220,38,38,0.22)",
               }}
             >
               Escalate
@@ -308,11 +313,11 @@ export function BiometricModal({
                 onMarkStable(patient.patient_id);
                 onClose();
               }}
-              className="flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
-                background: "#63992218",
-                color: "#639922",
-                border: "1px solid #63992245",
+                background: "rgba(22,163,74,0.08)",
+                color: "#15803d",
+                border: "1px solid rgba(22,163,74,0.22)",
               }}
             >
               Mark Stable
@@ -337,13 +342,13 @@ function VitalCard({
 }) {
   return (
     <div
-      className="rounded-lg p-3"
-      style={{ background: "#080f1c", border: "1px solid #1e293b" }}
+      className="rounded-xl p-4"
+      style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
     >
-      <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-xl font-bold" style={{ color }}>
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{label}</p>
+      <p className="text-2xl font-black leading-none" style={{ color }}>
         {value}
-        {unit && <span className="ml-1 text-xs font-normal text-slate-500">{unit}</span>}
+        {unit && <span className="ml-1 text-sm font-medium" style={{ color: "var(--text-muted)" }}>{unit}</span>}
       </p>
     </div>
   );
@@ -353,10 +358,10 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div
       className="rounded p-2.5"
-      style={{ background: "#080f1c", border: "1px solid #1e293b" }}
+      style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
     >
-      <p className="text-xs text-slate-600">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-white">{value}</p>
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</p>
+      <p className="mt-0.5 text-sm font-medium" style={{ color: "var(--text)" }}>{value}</p>
     </div>
   );
 }

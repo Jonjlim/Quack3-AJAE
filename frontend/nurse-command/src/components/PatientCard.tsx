@@ -52,6 +52,7 @@ function formatElapsed(baseMinutes: number, extraSeconds: number): string {
 
 export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount }: PatientCardProps) {
   const [extraSeconds, setExtraSeconds] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const start = Date.now();
@@ -65,111 +66,141 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
   const confLabel = confidenceLabel(bio);
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(patient)}
-      className="w-full cursor-pointer rounded-lg p-3 text-left transition-all duration-150 hover:brightness-110"
+    <div
+      className="w-full cursor-pointer rounded-2xl text-left transition-all duration-200"
+      onClick={() => setIsExpanded((v) => !v)}
       style={{
-        background: isSelected ? "#1a2540" : "#0d1526",
-        borderTop: `1px solid ${isSelected ? meta.statusColor + "60" : "#1e293b"}`,
-        borderRight: `1px solid ${isSelected ? meta.statusColor + "60" : "#1e293b"}`,
-        borderBottom: `1px solid ${isSelected ? meta.statusColor + "60" : "#1e293b"}`,
-        borderLeft: `4px solid ${meta.statusColor}`,
+        background: isSelected ? "#eff6ff" : "#ffffff",
+        borderTop: `1px solid ${isSelected ? "rgba(37,99,235,0.25)" : "#e2e8f0"}`,
+        borderRight: `1px solid ${isSelected ? "rgba(37,99,235,0.25)" : "#e2e8f0"}`,
+        borderBottom: `1px solid ${isSelected ? "rgba(37,99,235,0.25)" : "#e2e8f0"}`,
+        borderLeft: `3px solid ${meta.triageColor}`,
+        boxShadow: isSelected ? "0 2px 8px rgba(37,99,235,0.12)" : "0 1px 4px rgba(0,0,0,0.06)",
       }}
     >
-      {/* Row 1: name + triage badge + status + alert count */}
-      <div className="mb-1.5 flex items-center justify-between">
+      {/* ── Compact rows (always visible) ── */}
+      <div className="px-3 py-2.5">
+        {/* Row 1: name + priority */}
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-sm font-bold leading-snug" style={{ color: "var(--text)" }}>
+            {patient.display_name}
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {alertCount > 0 && (
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                style={{ background: "#E24B4A" }}
+              >
+                {alertCount}
+              </span>
+            )}
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{ background: meta.statusColor + "20", color: meta.statusColor }}
+            >
+              {meta.statusLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Row 2: triage badge + BPM + wait + chevron */}
         <div className="flex items-center gap-2">
           <span
-            className="h-2 w-2 flex-shrink-0 rounded-full"
-            style={{ background: meta.statusColor }}
-          />
-          <span className="text-sm font-bold text-white">{patient.display_name}</span>
-          <span
-            className="rounded px-1.5 py-0.5 text-xs font-bold"
-            style={{
-              background: meta.triageColor + "30",
-              color: meta.triageColor,
-              border: `1px solid ${meta.triageColor}70`,
-            }}
+            className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: meta.triageColor + "25", color: meta.triageColor }}
           >
             T{meta.triageNum}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {alertCount > 0 && (
-            <span
-              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: "#E24B4A" }}
-            >
-              {alertCount}
-            </span>
-          )}
-          <span className="text-xs font-semibold uppercase" style={{ color: meta.statusColor }}>
-            {meta.statusLabel}
+          <span
+            className="tabular-nums font-black"
+            style={{ fontSize: "1rem", color: hrDisplay.muted ? "var(--text-dim)" : "var(--amber)" }}
+          >
+            {hrDisplay.value}
+            <span className="text-[10px] font-medium ml-0.5" style={{ color: "var(--text-muted)" }}>bpm</span>
+          </span>
+          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>·</span>
+          <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+            ⏱ {formatElapsed(patient.wait_minutes, extraSeconds)}
+          </span>
+          <span className="ml-auto text-[10px]" style={{ color: "var(--text-dim)" }}>
+            {isExpanded ? "▲" : "▼"}
           </span>
         </div>
       </div>
 
-      {/* Row 2: patient ID + complaint */}
-      <p className="mb-0.5 font-mono text-[11px] tracking-wide text-slate-500">{patient.patient_id}</p>
-      <p className="mb-2 line-clamp-1 text-sm text-slate-300">{patient.chief_complaint}</p>
+      {/* ── Expanded detail section ── */}
+      {isExpanded && (
+        <div
+          className="px-3 pb-3"
+          onClick={(e) => e.stopPropagation()}
+          style={{ borderTop: "1px solid #e2e8f0" }}
+        >
+          {/* Chief complaint */}
+          <p className="mt-2 text-xs" style={{ color: "var(--text-2)" }}>{patient.chief_complaint}</p>
 
-      {/* Row 3: HR value + sparkline */}
-      <div className="flex items-center gap-2">
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-baseline gap-1">
-            <span className="text-xs text-slate-500">HR</span>
-            <span
-              className="tabular-nums text-base font-bold"
-              style={{ color: hrDisplay.muted ? "#64748b" : meta.statusColor }}
-            >
-              {hrDisplay.value}
-            </span>
-            {hrDisplay.sub && (
-              <span className="text-xs text-slate-500">({hrDisplay.sub})</span>
+          {/* HR + sparkline */}
+          <div className="mt-2 flex items-center gap-3">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5" style={{ color: "var(--text-muted)" }}>
+                Heart Rate
+              </p>
+              <div className="flex items-baseline gap-1">
+                <span
+                  className="tabular-nums font-black leading-none"
+                  style={{ fontSize: "1.8rem", color: hrDisplay.muted ? "var(--text-dim)" : "var(--amber)", letterSpacing: "-0.02em" }}
+                >
+                  {hrDisplay.value}
+                </span>
+                <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>bpm</span>
+              </div>
+              {confLabel && (
+                <p className="mt-0.5 text-[10px]" style={{ color: hrDisplay.muted ? "var(--text-dim)" : "var(--text-muted)" }}>
+                  {confLabel}
+                </p>
+              )}
+            </div>
+            {hrData.length > 1 && (
+              <div className="h-10 min-w-0 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={hrData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                    <Line
+                      type="monotone"
+                      dataKey="heart_rate_bpm"
+                      stroke={hrDisplay.muted ? "rgba(0,0,0,0.15)" : "#f59e0b"}
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             )}
-            <span className="text-xs text-slate-600">bpm</span>
           </div>
-          {confLabel && (
-            <span
-              className="text-[10px] font-medium uppercase tracking-wide"
-              style={{ color: hrDisplay.muted ? "#475569" : "#94a3b8" }}
-            >
-              {confLabel}
-            </span>
+
+          {/* AI reasoning */}
+          {patient.triage_reasoning && (
+            <p className="mt-1.5 line-clamp-2 text-[11px] italic" style={{ color: "var(--text-dim)" }}>
+              <span className="not-italic font-semibold" style={{ color: "var(--accent)" }}>AI · </span>
+              {patient.triage_reasoning}
+            </p>
           )}
+
+          {/* View full details button */}
+          <button
+            type="button"
+            onClick={() => onSelect(patient)}
+            className="mt-3 w-full rounded-xl py-1.5 text-xs font-bold transition-all"
+            style={{
+              background: "rgba(37,99,235,0.08)",
+              color: "var(--accent)",
+              border: "1px solid rgba(37,99,235,0.20)",
+            }}
+          >
+            View Full Details →
+          </button>
         </div>
-        {hrData.length > 1 && (
-          <div className="h-8 min-w-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={hrData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-                <Line
-                  type="monotone"
-                  dataKey="heart_rate_bpm"
-                  stroke={meta.statusColor}
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      {/* Row 4: AI triage reasoning */}
-      {patient.triage_reasoning && (
-        <p className="mt-1.5 line-clamp-2 text-[11px] italic text-slate-500">
-          <span className="not-italic font-medium text-violet-400">AI Analysis · </span>
-          {patient.triage_reasoning}
-        </p>
       )}
-
-      {/* Row 5: wait time */}
-      <p className="mt-1.5 text-xs text-slate-600">
-        Waiting: {formatElapsed(patient.wait_minutes, extraSeconds)}
-      </p>
-    </button>
+    </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BiometricModal } from "./components/BiometricModal";
 import { PatientGrid } from "./components/PatientGrid";
 import { WideAngleFeed } from "./components/WideAngleFeed";
@@ -24,10 +24,18 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className="relative px-4 py-2 text-sm font-semibold transition-colors"
+      className="relative px-5 text-[15px] font-bold transition-all"
       style={{
-        color: active ? "white" : "#64748b",
-        borderBottom: active ? "2px solid #3b82f6" : "2px solid transparent",
+        paddingTop: "7px",
+        paddingBottom: "7px",
+        color: active ? "#ffffff" : "#64748b",
+        background: active ? "#2563eb" : "#f1f5f9",
+        border: active ? "none" : "1px solid #e2e8f0",
+        borderRadius: "999px",
+        boxShadow: active ? "0 2px 8px rgba(37,99,235,0.25)" : "none",
+        textShadow: "none",
+        zIndex: active ? 10 : 1,
+        alignSelf: "center",
       }}
     >
       {children}
@@ -97,34 +105,48 @@ export default function App() {
     (a) => a.severity === "CRITICAL" || a.severity === "HIGH",
   );
 
-  const statusLabel = isMock ? "◆ Mock Mode" : connected ? "● Telemetry Live" : "○ Offline";
-  const statusClass = isMock
-    ? "bg-slate-700 text-slate-300"
-    : connected
-      ? "bg-emerald-900 text-emerald-300"
-      : "bg-slate-800 text-slate-500";
+  const isLive = !isMock && connected;
+
+  const [clock, setClock] = useState(() => new Date().toLocaleTimeString("en-GB"));
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date().toLocaleTimeString("en-GB")), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-white">
-      <header className="flex flex-shrink-0 items-center justify-between border-b border-slate-800 px-5">
+    <div className="flex h-screen flex-col overflow-hidden" style={{ color: "var(--text)" }}>
+
+      <header
+        className="cc-header-stripe flex flex-shrink-0 items-center justify-between px-5 py-3"
+        style={{
+          background: "#ffffff",
+          borderBottom: "1px solid #e2e8f0",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        }}
+      >
         <div className="flex items-center gap-6">
           <div className="py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">ER-OVERWATCH</p>
-            <h1 className="text-base font-bold leading-tight">Nurse Command Center</h1>
+            <p className="text-[11px] font-bold tracking-[0.12em] uppercase" style={{ color: "var(--accent)" }}>
+              ER · Overwatch
+            </p>
+            <h1 className="text-base font-bold tracking-tight" style={{ color: "var(--text)" }}>
+              Nurse Command Center
+            </h1>
           </div>
 
-          <nav className="flex items-end self-stretch gap-1">
+          <nav className="flex items-center gap-2 px-1">
             <TabButton active={tab === "dashboard"} onClick={() => setTab("dashboard")}>
               Dashboard
             </TabButton>
             <TabButton active={tab === "checkin"} onClick={() => setTab("checkin")}>
-              + Check In Patient
+              + Check In
             </TabButton>
             <a
               href="/camera"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-300"
+              className="px-4 py-2 text-sm font-medium transition-colors"
+              style={{ color: "#94a3b8" }}
             >
               Room Camera ↗
             </a>
@@ -135,21 +157,26 @@ export default function App() {
           <button
             type="button"
             onClick={() => setDemoMode(!demoMode)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-              demoMode
-                ? "bg-amber-700 text-amber-100 ring-1 ring-amber-500"
-                : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-            }`}
+            className="rounded-full px-3 py-1 text-xs font-semibold transition-all"
+            style={demoMode
+              ? { background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid rgba(37,99,235,0.25)" }
+              : { background: "#f1f5f9", color: "var(--text-muted)", border: "1px solid #e2e8f0" }
+            }
           >
-            {demoMode ? "⚡ Demo: ON" : "Demo Mode"}
+            {demoMode ? "⚡ Demo" : "Demo"}
           </button>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass}`}>
-            {statusLabel}
-          </span>
+          <div className="flex items-center gap-2 text-xs">
+            <span
+              className={isLive ? "amber-pulse" : ""}
+              style={{ color: isMock ? "var(--text-dim)" : isLive ? "var(--accent)" : "var(--text-dim)" }}
+            >
+              {isMock ? "◆ Mock" : isLive ? "● Live" : "○ Offline"}
+            </span>
+          </div>
         </div>
       </header>
 
-      <div className="flex flex-1 gap-3 overflow-hidden p-3">
+      <div className="flex flex-1 gap-2 overflow-hidden p-2">
         {tab === "dashboard" ? (
           <>
             <PatientGrid
@@ -174,17 +201,33 @@ export default function App() {
           <CheckInTab onSubmit={addPatient} />
         )}
 
-        <aside className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-slate-700 bg-slate-900">
-          <header className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+        <aside
+          className={`flex w-72 flex-shrink-0 flex-col ${hasCritical ? "alert-critical-panel" : ""}`}
+          style={{
+            background: hasCritical ? "#fef2f2" : "#ffffff",
+            border: hasCritical
+              ? "1px solid #fca5a5"
+              : "1px solid #e2e8f0",
+            boxShadow: hasCritical
+              ? "0 0 0 2px rgba(220,38,38,0.08), 0 2px 12px rgba(220,38,38,0.10), 0 1px 3px rgba(0,0,0,0.04)"
+              : "0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+            borderRadius: "24px",
+          }}
+        >
+          <header
+            className="flex items-center justify-between px-4 py-4"
+            style={{ borderBottom: `1px solid ${hasCritical ? "rgba(220,38,38,0.15)" : "#e2e8f0"}` }}
+          >
             <h2
-              className="text-sm font-semibold uppercase tracking-wide"
-              style={{ color: hasCritical ? "#E24B4A" : "#94a3b8" }}
+              className="text-base font-black tracking-tight"
+              style={{ color: hasCritical ? "#dc2626" : "var(--text)" }}
             >
-              {hasCritical ? "⚠ Critical alerts" : "Active alerts"}
+              {hasCritical ? "🚨 ALERT" : "Alerts"}
             </h2>
             {unackedAlerts.length > 0 && (
               <span
-                className={`rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white ${hasCritical ? "alert-badge-pulse" : ""}`}
+                className={`rounded-full px-2.5 py-1 text-xs font-black text-white ${hasCritical ? "alert-badge-pulse" : ""}`}
+                style={{ background: "#dc2626", boxShadow: hasCritical ? "0 0 12px rgba(220,38,38,0.70)" : "none" }}
               >
                 {unackedAlerts.length}
               </span>
@@ -193,7 +236,7 @@ export default function App() {
 
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {unackedAlerts.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-600">No active alerts</p>
+              <p className="py-8 text-center text-xs" style={{ color: "var(--text-dim)" }}>No active alerts</p>
             ) : (
               unackedAlerts.map((alert) => {
                 const patientName = alert.patient_id
@@ -203,31 +246,36 @@ export default function App() {
                 return (
                   <div
                     key={alert.alert_id}
-                    className="rounded-lg border p-3"
-                    style={{ background: "#160a0a", borderColor: "#E24B4A40" }}
+                    className="rounded-2xl border p-4"
+                    style={{
+                      background: "#ffffff",
+                      borderColor: "#e2e8f0",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                    }}
                   >
-                    <div className="mb-1 flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-white">
+                    <div className="mb-1.5 flex items-start justify-between gap-2">
+                      <p className="text-sm font-black uppercase tracking-wide" style={{ color: "#dc2626" }}>
                         {alert.type.replace(/_/g, " ")}
                       </p>
                       {patientName && (
-                        <span className="shrink-0 font-mono text-xs text-slate-400">
+                        <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(248,113,113,0.20)", color: "#fca5a5" }}>
                           {patientName}
                         </span>
                       )}
                     </div>
-                    <p className="mb-1 text-xs text-slate-400">{alert.message}</p>
-                    <p className="mb-2 text-xs text-slate-600">
-                      {new Date(alert.created_at).toLocaleTimeString()}
+                    <p className="mb-1 text-xs font-medium" style={{ color: "var(--text-2)" }}>{alert.message}</p>
+                    <p className="mb-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      {new Date(alert.created_at).toLocaleTimeString("en-GB")}
                     </p>
                     <button
                       type="button"
                       onClick={() => acknowledgeAlert(alert.alert_id)}
-                      className="w-full rounded py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                      className="w-full rounded-xl py-2 text-sm font-bold transition-opacity hover:opacity-80"
                       style={{
-                        background: "#E24B4A20",
-                        color: "#E24B4A",
-                        border: "1px solid #E24B4A40",
+                        background: "rgba(220,38,38,0.85)",
+                        color: "#ffffff",
+                        boxShadow: "0 2px 12px rgba(220,38,38,0.45), inset 0 1px 0 rgba(255,150,150,0.40)",
+                        border: "none",
                       }}
                     >
                       Acknowledge
@@ -239,6 +287,36 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      {/* Bottom status bar */}
+      <footer
+        className="flex flex-shrink-0 items-center justify-between px-5 py-1.5"
+        style={{
+          background: "#ffffff",
+          borderTop: "1px solid #e2e8f0",
+          boxShadow: "0 -2px 8px rgba(0,0,0,0.04)",
+        }}
+      >
+        <div className="flex items-center gap-6">
+          <span className="text-[10px] font-bold tracking-widest" style={{ color: "var(--accent)" }}>
+            ER·OVERWATCH
+          </span>
+          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            <span style={{ color: "var(--text)" }}>{patients.length}</span> patients
+          </span>
+          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            <span style={{ color: unackedAlerts.length > 0 ? "var(--critical)" : "var(--text)" }}>{unackedAlerts.length}</span> alerts
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[10px]" style={{ color: "var(--text-dim)" }}>
+            {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}
+          </span>
+          <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>
+            {clock}
+          </span>
+        </div>
+      </footer>
 
       <BiometricModal
         patient={selectedPatient}
