@@ -189,287 +189,359 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
     }
   }
 
-  const submitColor = acuity ? TRIAGE_CONFIG[acuity].color : "#2563eb";
-  const activeTriageColor = acuity ? TRIAGE_CONFIG[acuity].color : "#3b82f6";
+  const submitColor = acuity ? TRIAGE_CONFIG[acuity].color : "#1f2937";
+  const activeTriageColor = acuity ? TRIAGE_CONFIG[acuity].color : "#374151";
+
+  const inputClass =
+    "intake-input telemetry-value border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-dim)]";
 
   // ─── Layout ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--surface)]">
+      <header className="panel-header flex-shrink-0">
+        <p className="telemetry-label">Patient check-in</p>
+      </header>
 
-      {successCheckin && (
-        <CheckInQrModal
-          displayName={successCheckin.display_name}
-          patientId={successCheckin.patient_id}
-          onClose={() => setSuccessCheckin(null)}
-        />
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto bg-[var(--border-subtle)] p-px">
+        {successCheckin && (
+          <CheckInQrModal
+            displayName={successCheckin.display_name}
+            patientId={successCheckin.patient_id}
+            onClose={() => setSuccessCheckin(null)}
+          />
+        )}
 
-      {submitError && (
-        <p className="flex-shrink-0 rounded-lg px-4 py-2 text-sm"
-          style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626" }}>
-          {submitError}
-        </p>
-      )}
+        {submitError && (
+          <p className="flex-shrink-0 border border-[var(--status-critical)] bg-red-50 px-3 py-2 text-xs text-[var(--status-critical)]">
+            {submitError}
+          </p>
+        )}
 
-      {/* Row 1 — patient info bar */}
-      <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5"
-        style={{ background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-          placeholder="Patient name"
-          className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
-        <div className="h-4 w-px bg-slate-200" />
-        <input type="number" value={age} onChange={(e) => setAge(e.target.value)}
-          placeholder="Age" min={0} max={120}
-          className="w-14 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
-        <div className="h-4 w-px bg-slate-200" />
-        <div className="flex gap-1">
-          {(["M", "F", "NB"] as const).map((s) => {
-            const full = s === "M" ? "Male" : s === "F" ? "Female" : "Non-binary";
-            const on = sex === full;
-            return (
-              <button key={s} type="button" onClick={() => setSex(on ? "" : full)}
-                className="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
-                style={{
-                  background: on ? "#3b82f620" : "transparent",
-                  color: on ? "#3b82f6" : "#475569",
-                  border: `1px solid ${on ? "#3b82f650" : "transparent"}`,
-                }}>
-                {s}
-              </button>
-            );
-          })}
-        </div>
-        <div className="h-4 w-px bg-slate-200" />
-        <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)}
-          className="bg-transparent text-sm text-slate-600 outline-none"
-          style={{ colorScheme: "light" }} />
-        {recentCheckins.length > 0 && (
-          <>
-            <div className="h-4 w-px bg-slate-200" />
-            <div className="flex gap-2">
+        {/* Row 1 — patient info bar */}
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-px bg-[var(--border-subtle)]">
+          <div className="min-w-[10rem] flex-1 bg-[var(--surface)] px-3 py-2">
+            <label htmlFor="checkin-name" className="telemetry-label block text-[10px]">
+              Patient name
+            </label>
+            <input
+              id="checkin-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Last, First"
+              className={`${inputClass} mt-1 w-full`}
+            />
+          </div>
+          <div className="w-20 bg-[var(--surface)] px-3 py-2">
+            <label htmlFor="checkin-age" className="telemetry-label block text-[10px]">
+              Age
+            </label>
+            <input
+              id="checkin-age"
+              type="number"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="—"
+              min={0}
+              max={120}
+              className={`${inputClass} mt-1 w-full`}
+            />
+          </div>
+          <div className="bg-[var(--surface)] px-3 py-2">
+            <p className="telemetry-label text-[10px]">Sex</p>
+            <div className="mt-1 flex gap-px bg-[var(--border-subtle)]">
+              {(["M", "F", "NB"] as const).map((s) => {
+                const full = s === "M" ? "Male" : s === "F" ? "Female" : "Non-binary";
+                const on = sex === full;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSex(on ? "" : full)}
+                    className="intake-input border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+                    style={{
+                      background: on ? "var(--surface-2)" : "var(--surface)",
+                      color: on ? "var(--text)" : "var(--text-muted)",
+                      borderColor: on ? "var(--text)" : "var(--border-subtle)",
+                    }}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="bg-[var(--surface)] px-3 py-2">
+            <label htmlFor="checkin-arrival" className="telemetry-label block text-[10px]">
+              Arrival
+            </label>
+            <input
+              id="checkin-arrival"
+              type="time"
+              value={arrivalTime}
+              onChange={(e) => setArrivalTime(e.target.value)}
+              className={`${inputClass} telemetry-value mt-1`}
+              style={{ colorScheme: "light" }}
+            />
+          </div>
+          {recentCheckins.length > 0 && (
+            <div className="flex flex-wrap items-end gap-1 bg-[var(--surface)] px-3 py-2">
+              <p className="telemetry-label w-full text-[10px]">Recent</p>
               {recentCheckins.slice(0, 3).map((c, i) => (
-                <span key={i} className="rounded px-2 py-0.5 font-mono text-xs font-medium"
-                  style={{ background: "#63992218", color: "#639922", border: "1px solid #63992230" }}
-                  title={c.name}>
+                <span
+                  key={i}
+                  className="telemetry-value border border-[var(--status-stable)] bg-green-50 px-1.5 py-px text-[10px] text-[var(--status-stable)]"
+                  title={c.name}
+                >
                   {c.patient_id}
                 </span>
               ))}
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Row 2 — chief complaint tiles (5 × 2 grid, h-14 each) */}
-      <div className="flex-shrink-0">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Chief complaint <span style={{ color: "#E24B4A" }}>*</span>
-          </p>
-          {selectedComplaints.size > 0 && (
-            <p className="text-xs text-slate-500">
-              {selectedComplaints.size > 1 ? `${selectedComplaints.size} selected` : Array.from(selectedComplaints)[0]}
+        {/* Row 2 — chief complaint tiles */}
+        <div className="flex-shrink-0 bg-[var(--surface)] p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="telemetry-label text-[11px]">
+              Chief complaint <span className="text-[var(--status-critical)]">*</span>
             </p>
-          )}
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {COMPLAINT_TILES.map((tile) => {
-            const active = selectedComplaints.has(tile.label);
-            const cfg = tile.suggestedAcuity ? TRIAGE_CONFIG[tile.suggestedAcuity] : null;
-            const tileColor = cfg?.color ?? "#3b82f6";
-            return (
-              <button key={tile.label} type="button" onClick={() => toggleComplaint(tile.label)}
-                className="relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-lg text-center transition-all"
-                style={{
-                  background: active ? tileColor + "15" : "#f8fafc",
-                  border: `1px solid ${active ? tileColor + "60" : "#e2e8f0"}`,
-                }}>
-                {/* T badge — top-right corner */}
-                {cfg && (
-                  <span className="absolute right-1.5 top-1 text-[10px] font-bold leading-none"
-                    style={{ color: active ? cfg.color : cfg.color + "55" }}>
-                    T{cfg.num}
-                  </span>
-                )}
-                <span className="text-sm font-semibold leading-tight"
-                  style={{ color: active ? tileColor : "#64748b" }}>
-                  {tile.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {selectedComplaints.has("Other") && (
-          <textarea rows={2} value={otherDetail}
-            onChange={(e) => setOtherDetail(e.target.value)}
-            placeholder="Other / add detail…"
-            className="mt-2 w-full resize-none rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
-            style={{ background: "#ffffff", border: "1px solid #e2e8f0" }} />
-        )}
-        {errors.complaint && (
-          <p className="mt-1 text-xs" style={{ color: "#E24B4A" }}>{errors.complaint}</p>
-        )}
-      </div>
-
-      {/* Row 3 — triage level (h-14 buttons) */}
-      <div className="flex-shrink-0">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Triage level <span style={{ color: "#E24B4A" }}>*</span>
-          </p>
-          {acuity && (
-            <span className="text-[10px] text-slate-500">
-              {acuityManual ? "Manually set" : "Auto-suggested · tap to override"}
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {ACUITY_ORDER.map((level) => {
-            const cfg = TRIAGE_CONFIG[level];
-            const selected = acuity === level;
-            return (
-              <button key={level} type="button" onClick={() => handleAcuitySelect(level)}
-                className="flex h-14 flex-col items-center justify-center rounded-lg transition-all"
-                style={{
-                  background: selected ? cfg.color + "25" : cfg.dimBg,
-                  border: `2px solid ${selected ? cfg.color : cfg.color + "35"}`,
-                }}>
-                <p className="text-sm font-bold" style={{ color: selected ? cfg.color : cfg.dimText }}>
-                  T{cfg.num}
-                </p>
-                <p className="text-xs" style={{ color: selected ? cfg.color : cfg.dimText }}>
-                  {cfg.label}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-        {errors.acuity && (
-          <p className="mt-1 text-xs" style={{ color: "#E24B4A" }}>{errors.acuity}</p>
-        )}
-      </div>
-
-      {/* Row 4 — symptoms */}
-      <div className="flex-shrink-0">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Symptoms</p>
-        <div className="flex flex-wrap gap-2">
-          {SYMPTOMS.map((s) => {
-            const active = symptoms.has(s);
-            return (
-              <button key={s} type="button" onClick={() => toggleSymptom(s)}
-                className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
-                style={{
-                  background: active ? activeTriageColor + "15" : "#f1f5f9",
-                  color: active ? activeTriageColor : "#64748b",
-                  border: `1px solid ${active ? activeTriageColor + "60" : "#e2e8f0"}`,
-                }}>
-                {s}
-              </button>
-            );
-          })}
-          <button type="button" onClick={() => setOtherSymptomSelected((v) => !v)}
-            className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
-            style={{
-              background: otherSymptomSelected ? activeTriageColor + "15" : "#f1f5f9",
-              color: otherSymptomSelected ? activeTriageColor : "#64748b",
-              border: `1px solid ${otherSymptomSelected ? activeTriageColor + "60" : "#e2e8f0"}`,
-            }}>
-            Other
-          </button>
-        </div>
-        {otherSymptomSelected && (
-          <input
-            type="text"
-            value={otherSymptom}
-            onChange={(e) => setOtherSymptom(e.target.value)}
-            placeholder="Describe symptom…"
-            className="mt-2 w-full rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
-            style={{ background: "#ffffff", border: "1px solid #e2e8f0" }}
-          />
-        )}
-      </div>
-
-      {/* Row 5 — AI monitoring config (always-visible, grows to fill remaining space) */}
-      <div className="flex min-h-0 flex-1 flex-col rounded-lg p-4"
-        style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            AI monitoring config
-          </p>
-          <span className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-            style={{
-              background: acuity ? TRIAGE_CONFIG[acuity].color + "18" : "#f1f5f9",
-              color: acuity ? TRIAGE_CONFIG[acuity].color : "#64748b",
-              border: `1px solid ${acuity ? TRIAGE_CONFIG[acuity].color + "40" : "#e2e8f0"}`,
-            }}>
-            {cvInstructions.alert_sensitivity} sensitivity
-          </span>
-        </div>
-
-        {selectedComplaints.size === 0 ? (
-          <p className="text-sm text-slate-600">Select a complaint to configure AI monitoring</p>
-        ) : (
-          <div className="flex gap-8 overflow-hidden">
-            {/* Left: tracking + ignore */}
-            <div className="flex-1 min-w-0">
-              <p className="mb-2 text-xs font-medium text-slate-500">Tracking closely</p>
-              {cvInstructions.track_priority.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {cvInstructions.track_priority.map((s) => (
-                    <span key={s} className="rounded px-2 py-0.5 text-xs"
-                      style={{ background: "#3b82f618", color: "#3b82f6", border: "1px solid #3b82f625" }}>
-                      {s}
+            {selectedComplaints.size > 0 && (
+              <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)]">
+                {selectedComplaints.size > 1
+                  ? `${selectedComplaints.size} selected`
+                  : Array.from(selectedComplaints)[0]}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-5 grid-rows-2 gap-px bg-[var(--border-subtle)]">
+            {COMPLAINT_TILES.map((tile, index) => {
+              const active = selectedComplaints.has(tile.label);
+              const cfg = tile.suggestedAcuity ? TRIAGE_CONFIG[tile.suggestedAcuity] : null;
+              const tileColor = cfg?.color ?? "#374151";
+              return (
+                <button
+                  key={tile.label}
+                  type="button"
+                  onClick={() => toggleComplaint(tile.label)}
+                  className="intake-input relative flex min-h-[4.5rem] flex-col items-start justify-center border border-[var(--border-subtle)] px-3 py-3 text-left"
+                  style={{
+                    background: active ? "var(--surface-2)" : "var(--surface)",
+                    borderColor: active ? tileColor : undefined,
+                  }}
+                >
+                  {cfg && (
+                    <span
+                      className="telemetry-value absolute right-2 top-2 text-[10px] font-bold"
+                      style={{ color: active ? cfg.color : "var(--text-dim)" }}
+                    >
+                      T{cfg.num}
                     </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-600">No specific signals for this complaint</p>
-              )}
-              {cvInstructions.ignore_flags.length > 0 && (
-                <div className="mt-3">
-                  <p className="mb-1.5 text-xs font-medium text-slate-500">Ignoring</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {cvInstructions.ignore_flags.map((s) => (
-                      <span key={s} className="rounded px-2 py-0.5 text-xs"
-                        style={{ background: "#64748b18", color: "#64748b", border: "1px solid #64748b25" }}>
+                  )}
+                  <span
+                    className="pr-6 text-sm font-semibold leading-snug"
+                    style={{ color: active ? tileColor : "var(--text)" }}
+                  >
+                    {tile.label}
+                  </span>
+                  <span className="telemetry-value mt-1 text-[10px] text-[var(--text-dim)]">
+                    {index + 1}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedComplaints.has("Other") && (
+            <textarea
+              rows={2}
+              value={otherDetail}
+              onChange={(e) => setOtherDetail(e.target.value)}
+              placeholder="Other / add detail…"
+              className={`${inputClass} mt-px w-full resize-none`}
+            />
+          )}
+          {errors.complaint && (
+            <p className="mt-1 text-xs text-[var(--status-critical)]">{errors.complaint}</p>
+          )}
+        </div>
+
+        {/* Row 3 — triage level */}
+        <div className="flex-shrink-0 bg-[var(--surface)] p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="telemetry-label text-[11px]">
+              Triage level <span className="text-[var(--status-critical)]">*</span>
+            </p>
+            {acuity && (
+              <span className="text-[10px] uppercase tracking-wider text-[var(--text-dim)]">
+                {acuityManual ? "Manually set" : "Auto-suggested · tap to override"}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-px bg-[var(--border-subtle)]">
+            {ACUITY_ORDER.map((level) => {
+              const cfg = TRIAGE_CONFIG[level];
+              const selected = acuity === level;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => handleAcuitySelect(level)}
+                  className="intake-input flex min-h-[3.5rem] flex-col items-center justify-center border bg-[var(--surface)] px-2 py-2"
+                  style={{
+                    borderColor: selected ? cfg.color : "var(--border-subtle)",
+                    background: selected ? cfg.dimBg : "var(--surface)",
+                  }}
+                >
+                  <p
+                    className="telemetry-value text-sm font-bold"
+                    style={{ color: selected ? cfg.color : cfg.dimText }}
+                  >
+                    T{cfg.num}
+                  </p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: selected ? cfg.color : cfg.dimText }}>
+                    {cfg.label}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          {errors.acuity && (
+            <p className="mt-1 text-xs text-[var(--status-critical)]">{errors.acuity}</p>
+          )}
+        </div>
+
+        {/* Row 4 — symptoms */}
+        <div className="flex-shrink-0 border-t border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+          <p className="telemetry-label mb-2 text-[11px]">Associated symptoms</p>
+          <div className="grid grid-cols-4 gap-px bg-[var(--border-subtle)] sm:grid-cols-8">
+            {SYMPTOMS.map((s) => {
+              const active = symptoms.has(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleSymptom(s)}
+                  className="intake-input flex min-h-[2.75rem] items-center justify-center border px-2 py-2 text-sm font-medium"
+                  style={{
+                    background: active ? "var(--surface)" : "var(--surface-2)",
+                    color: active ? activeTriageColor : "var(--text-muted)",
+                    borderColor: active ? activeTriageColor : "var(--border-subtle)",
+                  }}
+                >
+                  {s}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setOtherSymptomSelected((v) => !v)}
+              className="intake-input flex min-h-[2.75rem] items-center justify-center border px-2 py-2 text-sm font-medium"
+              style={{
+                background: otherSymptomSelected ? "var(--surface)" : "var(--surface-2)",
+                color: otherSymptomSelected ? activeTriageColor : "var(--text-muted)",
+                borderColor: otherSymptomSelected ? activeTriageColor : "var(--border-subtle)",
+              }}
+            >
+              Other
+            </button>
+          </div>
+          {otherSymptomSelected && (
+            <input
+              type="text"
+              value={otherSymptom}
+              onChange={(e) => setOtherSymptom(e.target.value)}
+              placeholder="Describe symptom…"
+              className={`${inputClass} mt-px w-full`}
+            />
+          )}
+        </div>
+
+        {/* Row 5 — AI monitoring config */}
+        <div className="flex min-h-0 flex-1 flex-col border-t border-[var(--border-subtle)] bg-[var(--surface)] p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="telemetry-label text-[11px]">AI monitoring config</p>
+            <span
+              className="border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              style={{
+                background: acuity ? TRIAGE_CONFIG[acuity].color + "18" : "var(--surface-2)",
+                color: acuity ? TRIAGE_CONFIG[acuity].color : "var(--text-muted)",
+                borderColor: acuity ? TRIAGE_CONFIG[acuity].color + "40" : "var(--border-subtle)",
+              }}
+            >
+              {cvInstructions.alert_sensitivity} sensitivity
+            </span>
+          </div>
+
+          {selectedComplaints.size === 0 ? (
+            <p className="text-sm text-[var(--text-muted)]">Select a complaint to configure AI monitoring</p>
+          ) : (
+            <div className="flex gap-8 overflow-hidden">
+              <div className="min-w-0 flex-1">
+                <p className="telemetry-label mb-2 text-[10px]">Tracking closely</p>
+                {cvInstructions.track_priority.length > 0 ? (
+                  <div className="flex flex-wrap gap-px bg-[var(--border-subtle)]">
+                    {cvInstructions.track_priority.map((s) => (
+                      <span
+                        key={s}
+                        className="border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--text-2)]"
+                      >
                         {s}
                       </span>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <p className="text-xs text-[var(--text-muted)]">No specific signals for this complaint</p>
+                )}
+                {cvInstructions.ignore_flags.length > 0 && (
+                  <div className="mt-3">
+                    <p className="telemetry-label mb-1.5 text-[10px]">Ignoring</p>
+                    <div className="flex flex-wrap gap-px bg-[var(--border-subtle)]">
+                      {cvInstructions.ignore_flags.map((s) => (
+                        <span
+                          key={s}
+                          className="border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--text-muted)]"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            {/* Right: sensitivity + universal flags */}
-            <div className="w-44 flex-shrink-0">
-              <p className="mb-2 text-xs font-medium text-slate-500">Alert sensitivity</p>
-              <p className="mb-4 text-sm font-semibold capitalize"
-                style={{ color: acuity ? TRIAGE_CONFIG[acuity].color : "#64748b" }}>
-                {cvInstructions.alert_sensitivity}
-              </p>
-              <p className="mb-1.5 text-xs font-medium text-slate-500">Always monitoring</p>
-              <div className="flex flex-col gap-1">
-                {UNIVERSAL_FLAGS.map((f) => (
-                  <span key={f} className="text-xs" style={{ color: "#475569" }}>
-                    · {f.replace(/_/g, " ")}
-                  </span>
-                ))}
+              <div className="w-44 flex-shrink-0">
+                <p className="telemetry-label mb-2 text-[10px]">Alert sensitivity</p>
+                <p
+                  className="mb-4 text-sm font-semibold capitalize"
+                  style={{ color: acuity ? TRIAGE_CONFIG[acuity].color : "var(--text-muted)" }}
+                >
+                  {cvInstructions.alert_sensitivity}
+                </p>
+                <p className="telemetry-label mb-1.5 text-[10px]">Always monitoring</p>
+                <div className="flex flex-col gap-1">
+                  {UNIVERSAL_FLAGS.map((f) => (
+                    <span key={f} className="text-xs text-[var(--text-2)]">
+                      · {f.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Row 7 — submit */}
-      <button
-        type="button"
-        onClick={() => void handleSubmit()}
-        disabled={submitting}
-        className="flex-shrink-0 w-full rounded-lg py-3 text-base font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{ background: submitColor, color: "white" }}
-      >
-        {submitting ? "Checking in…" : "Check in patient →"}
-      </button>
+        {/* Submit */}
+        <button
+          type="button"
+          onClick={() => void handleSubmit()}
+          disabled={submitting}
+          className="intake-submit flex-shrink-0 w-full border py-3 text-xs font-semibold uppercase tracking-[0.15em] text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: submitColor, borderColor: submitColor }}
+        >
+          {submitting ? "Checking in…" : "Check in patient →"}
+        </button>
+      </div>
     </div>
   );
 }

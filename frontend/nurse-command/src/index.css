@@ -207,3 +207,18 @@ body {
 .alert-card-fall {
   animation: fall-card-border-pulse 1s ease-in-out infinite;
 }
+
+/* ── Manual intake — sharp focus, no glow ──────────────────────────────── */
+.intake-input:focus,
+.intake-input:focus-visible {
+  outline: none;
+  border-color: var(--text) !important;
+  box-shadow: none;
+}
+
+.intake-submit:focus,
+.intake-submit:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+  box-shadow: none;
+}
