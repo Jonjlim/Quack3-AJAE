@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BiometricModal } from "./components/BiometricModal";
+import { FallAlertModal } from "./components/FallAlertModal";
 import { ManualIntakePanel } from "./components/ManualIntakePanel";
 import { PatientGrid } from "./components/PatientGrid";
 import { WideAngleFeed } from "./components/WideAngleFeed";
@@ -102,6 +103,9 @@ export default function App() {
   const hasCritical = unackedAlerts.some(
     (a) => a.severity === "CRITICAL" || a.severity === "HIGH",
   );
+
+  // Most recent unacknowledged fall — drives the takeover modal
+  const activeFallAlert = unackedAlerts.find((a) => a.type === "CRITICAL_FALL") ?? null;
 
   const isLive = !isMock && connected;
 
@@ -263,6 +267,7 @@ export default function App() {
               </p>
             ) : (
               unackedAlerts.map((alert) => {
+                const isFall = alert.type === "CRITICAL_FALL";
                 const patientName = alert.patient_id
                   ? (patients.find((p) => p.patient_id === alert.patient_id)?.display_name ??
                     alert.patient_id)
@@ -270,10 +275,19 @@ export default function App() {
                 return (
                   <div
                     key={alert.alert_id}
-                    className="border border-[var(--border-subtle)] bg-[var(--surface)] p-2"
+                    className={`border p-2 ${
+                      isFall
+                        ? "alert-card-fall border-[var(--status-critical)]"
+                        : "border-[var(--border-subtle)] bg-[var(--surface)]"
+                    }`}
                   >
                     <div className="mb-1 flex items-start justify-between gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--status-critical)]">
+                      <p
+                        className={`font-semibold uppercase tracking-widest text-[var(--status-critical)] ${
+                          isFall ? "text-[11px]" : "text-[10px]"
+                        }`}
+                      >
+                        {isFall ? "⚠ " : ""}
                         {alert.type.replace(/_/g, " ")}
                       </p>
                       {patientName && (
@@ -289,9 +303,13 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => acknowledgeAlert(alert.alert_id)}
-                      className="w-full border border-[var(--status-critical)] bg-[var(--status-critical)] py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white hover:opacity-90"
+                      className={`w-full border border-[var(--status-critical)] py-1.5 font-semibold uppercase tracking-widest text-white hover:opacity-90 ${
+                        isFall
+                          ? "bg-[var(--status-critical)] text-[11px]"
+                          : "bg-[var(--status-critical)] text-[10px]"
+                      }`}
                     >
-                      Acknowledge
+                      {isFall ? "Acknowledge Fall" : "Acknowledge"}
                     </button>
                   </div>
                 );
@@ -328,6 +346,19 @@ export default function App() {
           </span>
         </div>
       </footer>
+
+      {activeFallAlert && (
+        <FallAlertModal
+          alert={activeFallAlert}
+          patientName={
+            activeFallAlert.patient_id
+              ? (patients.find((p) => p.patient_id === activeFallAlert.patient_id)
+                  ?.display_name ?? activeFallAlert.patient_id)
+              : null
+          }
+          onAcknowledge={acknowledgeAlert}
+        />
+      )}
 
       <BiometricModal
         patient={selectedPatient}
