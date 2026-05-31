@@ -143,6 +143,23 @@ export interface DemoFallTriggerResponse {
   broadcast: boolean;
 }
 
+/** Fall detected in the browser — reported to triage-engine. */
+export interface BrowserFallReportRequest {
+  confidence: number;
+  danger_level: "low" | "medium" | "high";
+  coordinates?: { x: number; y: number } | null;
+  frame_timestamp?: number | null;
+  source?: "browser";
+  patient_id?: string | null;
+  message?: string | null;
+}
+
+export interface FallReportResponse {
+  alert: AlertEvent;
+  broadcast: boolean;
+  accepted: boolean;
+}
+
 export interface RppgQualityMetrics {
   face_coverage: number;
   motion_score: number;

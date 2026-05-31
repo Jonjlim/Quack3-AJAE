@@ -43,7 +43,7 @@ export function recordVideoClip(
   });
 }
 
-/** POST a video clip to scene-intel rPPG and apply biometrics on the backend. */
+/** POST a video clip to backend rPPG and apply biometrics on the triage engine. */
 export async function submitRppgClip(
   patientId: string,
   blob: Blob,
@@ -86,7 +86,7 @@ export async function submitRppgClip(
   form.append("patient_id", patientId);
   form.append("video", blob, `rppg-clip.${extension}`);
 
-  const response = await fetch(`${getApiBase()}/api/v1/scene-intel/rppg`, {
+  const response = await fetch(`${getApiBase()}/api/v1/rppg`, {
     method: "POST",
     body: form,
   });

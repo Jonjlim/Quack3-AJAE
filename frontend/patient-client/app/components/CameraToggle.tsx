@@ -64,7 +64,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
     },
     onError: (message) => {
       if (message.includes("503") || message.toLowerCase().includes("dependencies")) {
-        setStatus("Streaming · vitals backend unavailable (install scene-intel deps)");
+        setStatus("Streaming · vitals backend unavailable (install backend/rppg deps)");
         return;
       }
       if (message.includes("404")) {
