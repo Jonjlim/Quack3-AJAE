@@ -33,6 +33,8 @@ Interactive API docs: http://localhost:8000/docs
 | WebSocket hub | `ws/manager.py`, `ws/nurse.py` | Live — nurse, patient, AI channels |
 | Event broadcasts | `services/events.py` | Live — snapshots, alerts, biometrics, queue updates |
 | Wait time ticker | `ws/nurse.py` + `main.py` lifespan | Live — refreshes every 30s |
+| Browser fall report | `routers/queue.py` | Live — `POST /api/v1/alerts/fall-report` |
+| rPPG ingest | `routers/rppg.py` | Live — `POST /api/v1/rppg` |
 | Demo fall trigger | `routers/queue.py` | Live — for judging fallback |
 
 ---
@@ -46,8 +48,13 @@ REST routers ──> StateService ──> triage.py (sort / estimate)
                  EventBus ──> ConnectionManager ──> WebSocket clients
                       ^
                       │
-              /ws/ai (Architect 4)
+              /ws/ai (optional external ingress)
 ```
+
+**State flow on browser fall report:**
+1. Nurse dashboard detects fall locally (no video upload)
+2. `POST /api/v1/alerts/fall-report` with confidence + danger level
+3. `EventBus` broadcasts `CRITICAL_FALL` to `ws/nurse`
 
 **State flow on intake:**
 1. `POST /api/v1/intake` creates a `PatientRecord`
@@ -55,10 +62,13 @@ REST routers ──> StateService ──> triage.py (sort / estimate)
 3. `EventBus` pushes `PATIENTS_SNAPSHOT` + `PATIENT_UPDATE` to nurses
 4. Connected patient sockets receive `QUEUE_UPDATE`
 
-**State flow on AI alert (Architect 4):**
-1. scene-intel sends `TelemetryEnvelope` to `ws://localhost:8000/ws/ai`
-2. `CRITICAL_FALL` → stored + broadcast `ALERT` to nurses + patient escalated if `patient_id` set
-3. `BIOMETRIC` → updates patient vitals; critical drop auto-fires `BIOMETRIC_DROP` alert
+**State flow on rPPG clip:**
+1. Patient client POSTs video to `/api/v1/rppg`
+2. `rppg_bridge` runs `backend/rppg` in a thread pool
+3. Reliable readings update biometrics and broadcast to nurses
+
+**Optional `/ws/ai` ingress:**
+External agents may push `ALERT` / `BIOMETRIC` envelopes. Production fall alerts use REST `fall-report`, not `/ws/ai`.
 
 ---
 
@@ -96,7 +106,7 @@ curl -X POST http://localhost:8000/api/v1/demo/trigger-fall
 
 Edit `services/triage.py`:
 - Adjust `ACUITY_MINUTES` to match your demo narrative
-- Tune `is_biometric_critical()` thresholds for Architect 4's rPPG output
+- Tune `is_biometric_critical()` thresholds for rPPG output from `backend/rppg`
 - Add chief-complaint keyword boost (e.g. "chest pain" → bump acuity)
 
 ### Hour 3–4: Redis persistence (optional but impressive)

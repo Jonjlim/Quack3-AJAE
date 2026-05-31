@@ -10,7 +10,7 @@ All timestamps are ISO 8601 UTC. WebSocket payloads use the `TelemetryEnvelope` 
 
 ### POST `/api/v1/intake`
 
-Register a new patient after QR scan / digital intake.
+Register a new patient (nurse check-in only — patient PWA uses sign-in, not intake).
 
 **Request:**
 
@@ -39,25 +39,9 @@ Register a new patient after QR scan / digital intake.
 
 Individual queue status for the patient PWA.
 
-**Response `200`:**
+**Response `200`:** `QueueStatus` (see shared schema).
 
-```json
-{
-  "patient_id": "pat-001",
-  "queue_position": 4,
-  "wait_minutes": 12,
-  "estimated_wait_minutes": 45,
-  "status": "WAITING",
-  "acuity_load": {
-    "active_traumas": 2,
-    "severe_count": 1,
-    "emergent_count": 3,
-    "total_waiting": 14,
-    "estimated_wait_minutes": 45,
-    "updated_at": "2026-05-30T18:12:00Z"
-  }
-}
-```
+**Response `404`:** Patient ID not found.
 
 ---
 
@@ -65,62 +49,11 @@ Individual queue status for the patient PWA.
 
 Anonymized ER burden for the patient PWA (HIPAA-safe aggregate).
 
-**Response `200`:**
-
-```json
-{
-  "active_traumas": 2,
-  "severe_count": 1,
-  "emergent_count": 3,
-  "total_waiting": 14,
-  "estimated_wait_minutes": 45,
-  "updated_at": "2026-05-30T18:12:00Z"
-}
-```
-
 ---
 
 ### GET `/api/v1/patients`
 
 Full patient grid for the nurse dashboard.
-
-**Response `200`:**
-
-```json
-[
-  {
-    "patient_id": "pat-002",
-    "display_name": "Jordan K.",
-    "queue_position": 1,
-    "acuity": "EMERGENT",
-    "status": "ESCALATED",
-    "wait_minutes": 28,
-    "chief_complaint": "Severe abdominal pain",
-    "camera_enabled": true,
-    "last_biometric": {
-      "patient_id": "pat-002",
-      "heart_rate_bpm": 112.0,
-      "respiratory_rate_bpm": 22.0,
-      "confidence": 0.87,
-      "source": "rppg",
-      "recorded_at": "2026-05-30T18:11:00Z"
-    },
-    "created_at": "2026-05-30T17:44:00Z"
-  },
-  {
-    "patient_id": "pat-001",
-    "display_name": "Alex M.",
-    "queue_position": 4,
-    "acuity": "URGENT",
-    "status": "WAITING",
-    "wait_minutes": 12,
-    "chief_complaint": "Chest pain, difficulty breathing",
-    "camera_enabled": false,
-    "last_biometric": null,
-    "created_at": "2026-05-30T18:00:00Z"
-  }
-]
-```
 
 ---
 
@@ -128,24 +61,76 @@ Full patient grid for the nurse dashboard.
 
 Dismiss a sticky alert after nurse triage.
 
+---
+
+### POST `/api/v1/alerts/fall-report`
+
+**Browser fall detection** — nurse dashboard detects a fall locally and reports metadata (no video upload).
+
 **Request:**
 
 ```json
 {
-  "nurse_id": "nurse-01",
-  "notes": "Responded to waiting room sector B"
+  "confidence": 0.91,
+  "danger_level": "high",
+  "coordinates": { "x": 320, "y": 480 },
+  "frame_timestamp": 12.4,
+  "source": "browser",
+  "patient_id": null,
+  "message": null
 }
 ```
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `confidence` | yes | 0.0–1.0; must be ≥ 0.6 to accept |
+| `danger_level` | yes | `medium` or `high` to accept (`low` → `422`) |
+| `coordinates` | no | Pixel coords in analyzed frame |
+| `frame_timestamp` | no | Seconds into local stream |
+| `source` | no | Always `"browser"` |
+| `patient_id` | no | Optional link to a patient record |
+| `message` | no | Override default alert text |
 
 **Response `200`:**
 
 ```json
 {
-  "alert_id": "alert-001",
-  "acknowledged": true,
-  "acknowledged_at": "2026-05-30T18:15:00Z"
+  "accepted": true,
+  "broadcast": true,
+  "alert": {
+    "alert_id": "alert-fall-1717099200",
+    "type": "CRITICAL_FALL",
+    "severity": "CRITICAL",
+    "patient_id": null,
+    "message": "Fall detected (confidence 91%, danger high) at coordinates (320, 480)",
+    "acknowledged": false,
+    "created_at": "2026-05-30T18:20:00Z"
+  }
 }
 ```
+
+**Response `422`:** Below confidence/danger threshold.
+
+---
+
+### POST `/api/v1/demo/trigger-fall`
+
+Demo fallback — fires a pre-baked `CRITICAL_FALL` alert (no camera required).
+
+---
+
+### POST `/api/v1/rppg`
+
+Server-side rPPG heart-rate analysis from a patient video clip (`backend/rppg`).
+
+**Request:** `multipart/form-data`
+
+- `patient_id` (string, required)
+- `video` (video file, required)
+
+**Response `200`:** `SceneIntelRppgResponse` — see shared schema for `analysis`, `biometric`, `alert`, `broadcast`.
+
+**Note:** `biometric` is only populated when measurement is reliable and `confidence >= 0.5`.
 
 ---
 
@@ -153,161 +138,28 @@ Dismiss a sticky alert after nurse triage.
 
 Generate a LiveKit access token.
 
-**Request:**
-
-```json
-{
-  "room": "er-waiting-room",
-  "identity": "pat-001",
-  "role": "patient"
-}
-```
-
-Roles: `patient`, `nurse`, `broad_camera`
-
-**Response `200`:**
-
-```json
-{
-  "token": "<jwt>",
-  "url": "wss://your-project.livekit.cloud",
-  "room": "er-waiting-room",
-  "identity": "pat-001"
-}
-```
+**Roles:** `patient`, `nurse`, `broad_camera`
 
 ---
 
-### POST `/api/v1/demo/trigger-fall`
+### POST `/api/v1/patients/{patient_id}/camera`
 
-Demo fallback — fires a pre-baked `CRITICAL_FALL` alert (no network/CV required).
-
-**Response `200`:**
-
-```json
-{
-  "alert": {
-    "alert_id": "alert-demo-fall",
-    "type": "CRITICAL_FALL",
-    "severity": "CRITICAL",
-    "patient_id": null,
-    "message": "Fall detected in waiting room sector B",
-    "acknowledged": false,
-    "created_at": "2026-05-30T18:20:00Z"
-  },
-  "broadcast": true
-}
-```
+REST camera opt-in before rPPG sampling.
 
 ---
 
-### `POST /api/v1/scene-intel/fall-detection`
+## Removed endpoints
 
-Run scene-intel fall detection on an uploaded video clip. If a fall is detected with sufficient confidence, fires a `CRITICAL_FALL` alert to the nurse dashboard (same path as demo trigger).
-
-**Request:** `multipart/form-data` with field `video` (mp4 or other video format)
-
-**Response `200` (no fall):**
-
-```json
-{
-  "analysis": {
-    "fall_detected": false,
-    "confidence": 0.12,
-    "danger_level": "low",
-    "coordinates": null,
-    "frame_timestamp": null
-  },
-  "alert": null,
-  "broadcast": false
-}
-```
-
-**Response `200` (fall detected):**
-
-```json
-{
-  "analysis": {
-    "fall_detected": true,
-    "confidence": 0.91,
-    "danger_level": "high",
-    "coordinates": {"x": 320, "y": 480},
-    "frame_timestamp": 2.4
-  },
-  "alert": {
-    "alert_id": "alert-demo-fall-1717099200",
-    "type": "CRITICAL_FALL",
-    "severity": "CRITICAL",
-    "patient_id": null,
-    "message": "Fall detected (confidence 91%, danger high) at coordinates (320, 480)",
-    "acknowledged": false,
-    "created_at": "2026-05-30T18:20:00Z"
-  },
-  "broadcast": true
-}
-```
-
----
-
-### `POST /api/v1/scene-intel/rppg`
-
-Run scene-intel rPPG heart-rate analysis on a patient video clip. Applies biometrics to the patient record and broadcasts to nurses. Critical drops auto-fire `BIOMETRIC_DROP` alerts.
-
-**Request:** `multipart/form-data` with fields:
-- `patient_id` (string, required)
-- `video` (video file, required)
-
-**Response `200`:**
-
-```json
-{
-  "analysis": {
-    "heart_rate_bpm": 88.5,
-    "heart_rate_bpm_low": 82.0,
-    "heart_rate_bpm_high": 95.0,
-    "confidence": 0.9,
-    "signal_quality": "good",
-    "measurement_status": "reliable",
-    "quality_metrics": {
-      "face_coverage": 0.92,
-      "motion_score": 0.08,
-      "peak_prominence": 0.75,
-      "chrom_fft_agreement_bpm": 2.0
-    },
-    "error": null
-  },
-  "biometric": {
-    "patient_id": "pat-002",
-    "heart_rate_bpm": 88.5,
-    "heart_rate_bpm_low": 82.0,
-    "heart_rate_bpm_high": 95.0,
-    "respiratory_rate_bpm": null,
-    "confidence": 0.9,
-    "measurement_status": "reliable",
-    "source": "rppg",
-    "recorded_at": "2026-05-30T18:11:00Z"
-  },
-  "alert": null,
-  "broadcast": true
-}
-```
-
-**Note:** `biometric` is only populated when `measurement_status` is not `"unreliable"` and `confidence >= 0.5`. Unreliable analyses still return `200` with full `analysis` for patient-side coaching.
+| Former path | Replacement |
+|-------------|-------------|
+| `POST /api/v1/scene-intel/fall-detection` | Browser detection + `POST /api/v1/alerts/fall-report` |
+| `POST /api/v1/scene-intel/rppg` | `POST /api/v1/rppg` |
 
 ---
 
 ## WebSocket Endpoints
 
-All messages use `TelemetryEnvelope`:
-
-```json
-{
-  "version": "1.0",
-  "type": "ALERT",
-  "timestamp": "2026-05-30T18:20:00Z",
-  "payload": { }
-}
-```
+All messages use `TelemetryEnvelope`.
 
 ### `ws://localhost:8000/ws/nurse`
 
@@ -320,7 +172,7 @@ Nurse dashboard feed. Server pushes:
 | `ALERT` | `AlertEvent` |
 | `BIOMETRIC` | `BiometricReading` |
 
-**Example incoming alert:**
+**Example `CRITICAL_FALL` alert (from browser fall-report or demo trigger):**
 
 ```json
 {
@@ -343,47 +195,19 @@ Nurse dashboard feed. Server pushes:
 
 ### `ws://localhost:8000/ws/patient/{patient_id}`
 
-Patient queue updates. Server pushes:
-
-| `type` | `payload` shape |
-|--------|-----------------|
-| `QUEUE_UPDATE` | `QueueStatus` |
-| `HELP_ACK` | `{ "patient_id": string, "message": string }` |
-
-**Client may send help request:**
-
-```json
-{
-  "version": "1.0",
-  "type": "ALERT",
-  "timestamp": "2026-05-30T18:22:00Z",
-  "payload": {
-    "patient_id": "pat-001",
-    "message": "Immediate help requested"
-  }
-}
-```
+Patient queue updates (`QUEUE_UPDATE`, `HELP_ACK`). Client may send help requests as `ALERT` envelopes.
 
 ---
 
 ### `ws://localhost:8000/ws/ai`
 
-Scene-intel → triage-engine ingress. Client sends:
-
-| `type` | `payload` shape |
-|--------|-----------------|
-| `ALERT` | `AlertEvent` |
-| `BIOMETRIC` | `BiometricReading` |
-
-Server acknowledges with `{ "status": "received" }`.
+Optional ingress for external agents to push `ALERT` / `BIOMETRIC` envelopes. **Fall detection does not use this path** — it uses `POST /api/v1/alerts/fall-report`.
 
 ---
 
 ## Mock-First Integration
 
-Frontends should set env flags to use local mocks until backend is live:
-
 - Patient client: `NEXT_PUBLIC_USE_MOCK=true`
 - Nurse command: `VITE_USE_MOCK=true`
 
-Mock data must match the JSON examples in this document exactly.
+Mock data must match the JSON examples in this document and `shared/types/telemetry.ts`.

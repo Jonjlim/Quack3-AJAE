@@ -9,24 +9,27 @@ Zero-install, real-time emergency room telemetry and triage optimization platfor
 ```text
 Quack3-AJAE/
 ├── frontend/
-│   ├── patient-client/    # Architect 1 — Next.js 14 PWA
-│   └── nurse-command/     # Architect 2 — React 19 / Vite dashboard
+│   ├── patient-client/    # Patient sign-in, queue, camera + rPPG clip upload
+│   └── nurse-command/     # Nurse dashboard, check-in, browser fall detection, LiveKit
 ├── backend/
-│   ├── triage-engine/     # Architect 3 — FastAPI + WebSockets
-│   └── scene-intel/       # Architect 4 — OpenCV / rPPG / Vision
+│   ├── triage-engine/     # FastAPI REST + WebSockets + LiveKit tokens
+│   └── rppg/              # Server-side heart rate from face video (OpenCV / MediaPipe)
 ├── shared/                # Pydantic schemas + TypeScript types
-└── docs/                  # API contract + demo playbook
+└── docs/                  # API contract, architecture, demo playbook
 ```
 
-| Folder | Owner | Stack |
-|--------|-------|-------|
-| [`frontend/patient-client/`](frontend/patient-client/) | Architect 1 | Next.js 14, Tailwind 4, LiveKit |
-| [`frontend/nurse-command/`](frontend/nurse-command/) | Architect 2 | React 19, Vite, Tailwind 4, LiveKit |
-| [`backend/triage-engine/`](backend/triage-engine/) | Architect 3 | FastAPI, Python 3.11, Pydantic v2 |
-| [`backend/scene-intel/`](backend/scene-intel/) | Architect 4 | OpenCV, MediaPipe, OpenAI Vision |
-| [`shared/`](shared/) | Architect 3 (schemas) | Pydantic + TypeScript mirrors |
+| Folder | Role | Stack |
+|--------|------|-------|
+| [`frontend/patient-client/`](frontend/patient-client/) | Patient queue & vitals | Next.js 14, Tailwind 4, LiveKit |
+| [`frontend/nurse-command/`](frontend/nurse-command/) | Nurse ops & fall detection | React 19, Vite, Tailwind 4, LiveKit |
+| [`backend/triage-engine/`](backend/triage-engine/) | API + real-time state | FastAPI, Python 3.11, Pydantic v2 |
+| [`backend/rppg/`](backend/rppg/) | Remote photoplethysmography | OpenCV, MediaPipe, scipy |
+| [`shared/`](shared/) | Contracts | Pydantic + TypeScript mirrors |
 
-Integration contract: [`docs/API_endpoints.md`](docs/API_endpoints.md)  
+**Legacy:** [`backend/scene-intel/`](backend/scene-intel/) — deprecated (old Gemini fall path). Use `backend/rppg` and browser fall detection instead.
+
+Architecture overview: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)  
+API contract: [`docs/API_endpoints.md`](docs/API_endpoints.md)  
 Demo playbook: [`docs/DEMO.md`](docs/DEMO.md)
 
 ## Quick Start
@@ -35,21 +38,21 @@ Demo playbook: [`docs/DEMO.md`](docs/DEMO.md)
 
 ```bash
 cp .env.example .env
-# Fill in LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL from your LiveKit Cloud project
+# Fill in LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL from LiveKit Cloud
 ```
 
-### 2. Triage Engine (Architect 3)
+### 2. Triage Engine
 
 ```bash
 cd backend/triage-engine
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt   # includes scene-intel (rPPG) dependencies
+pip install -r requirements.txt   # includes backend/rppg dependencies
 ./run.sh
 ```
 
-Or manually: `PYTHONPATH=<repo-root> uvicorn app.main:app --reload --port 8000`
+Or: `PYTHONPATH=<repo-root> uvicorn app.main:app --reload --port 8000`
 
-### 3. Patient PWA (Architect 1)
+### 3. Patient PWA
 
 ```bash
 cd frontend/patient-client
@@ -57,9 +60,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000
+Open https://localhost:3000 — sign in with a **patient ID** from nurse check-in.
 
-### 4. Nurse Command (Architect 2)
+### 4. Nurse Command
 
 ```bash
 cd frontend/nurse-command
@@ -67,34 +70,39 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173
+Open http://localhost:5173 — check in patients and connect the wide-angle LiveKit feed.
 
-### 5. Scene Intelligence (Architect 4)
+Room camera + fall detection: http://localhost:5173/camera
+
+### 5. rPPG (optional local test)
 
 ```bash
-cd backend/scene-intel
-python -m venv .venv && source .venv/bin/activate
+cd backend/rppg
 pip install -r requirements.txt
-python main.py --demo   # fires demo fall alert
+pytest test_rppg.py
 ```
 
-## Mock-First Development
+## Video processing model
 
-Until endpoints are live, frontends use hardcoded JSON matching `docs/API_endpoints.md`:
+| Feature | Runs where | API |
+|---------|------------|-----|
+| Fall detection | **Browser** (nurse-command) | `POST /api/v1/alerts/fall-report` |
+| Heart rate (rPPG) | **Server** (`backend/rppg`) | `POST /api/v1/rppg` |
+| Live video | **LiveKit** | `POST /api/v1/livekit/token` |
+
+## Mock-First Development
 
 - Patient: `NEXT_PUBLIC_USE_MOCK=true`
 - Nurse: `VITE_USE_MOCK=true`
 
-## Cursor Rules
-
-See [`.cursorrules`](.cursorrules) — stay in your lane. Do not cross app directory boundaries without updating shared schemas.
-
 ## Demo Fallback
-
-If WebRTC or Wi-Fi fails during judging:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/demo/trigger-fall
 ```
 
 See [`docs/DEMO.md`](docs/DEMO.md) for the full playbook.
+
+## Cursor Rules
+
+See [`.cursorrules`](.cursorrules) — stay in your lane; update `shared/` when changing contracts.

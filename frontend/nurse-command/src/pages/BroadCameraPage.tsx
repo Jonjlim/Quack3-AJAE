@@ -1,4 +1,5 @@
 import { useBroadCameraPublisher } from "../hooks/useBroadCameraPublisher";
+import { useFallDetection } from "../hooks/useFallDetection";
 
 function StatusIndicator({ live }: { live: boolean }) {
   return (
@@ -10,9 +11,10 @@ function StatusIndicator({ live }: { live: boolean }) {
 }
 
 export default function BroadCameraPage() {
-  const { status, errorMessage, connect } = useBroadCameraPublisher();
-
+  const { status, errorMessage, stream, connect } = useBroadCameraPublisher();
   const isLive = status === "live";
+
+  useFallDetection(stream, isLive);
   const isStarting = status === "starting";
   const wasReplaced = status === "replaced";
 
@@ -31,7 +33,8 @@ export default function BroadCameraPage() {
             <>
               <p className="text-xl font-semibold text-emerald-300">Recording &amp; uploading</p>
               <p className="text-sm text-slate-400">
-                Live feed is active. Nurses can view this camera on the command dashboard.
+                Live feed is active. Fall detection runs on this device; nurses see alerts on the
+                command dashboard.
               </p>
             </>
           )}
