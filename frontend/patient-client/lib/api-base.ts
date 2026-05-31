@@ -28,18 +28,24 @@ function useSameOriginProxy(hostname: string, protocol: string): boolean {
   return isPrivateLanHost(hostname);
 }
 
-/** Resolve backend URL — LAN HTTPS + tunnel use same-origin proxy; localhost hits :8000 directly. */
+/** Resolve backend URL — LAN HTTPS + tunnel use same-origin proxy; production uses NEXT_PUBLIC_API_URL. */
 export function getApiBase(): string {
+  const configured = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API).replace(/\/$/, "");
+
   if (typeof window !== "undefined") {
     const { hostname, protocol } = window.location;
     if (useSameOriginProxy(hostname, protocol)) {
       return window.location.origin;
     }
+    if (configured !== DEFAULT_API) {
+      return configured;
+    }
     if (hostname !== "localhost" && hostname !== "127.0.0.1") {
       return `${protocol}//${hostname}:${API_PORT}`;
     }
   }
-  return process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API;
+
+  return configured;
 }
 
 export function getWsBase(): string {
