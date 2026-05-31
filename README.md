@@ -41,6 +41,8 @@ cp .env.example .env
 # Fill in LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL from LiveKit Cloud
 ```
 
+**Firebase Auth (optional, for Google track):** Set `REQUIRE_FIREBASE_AUTH=true` and configure Firebase Console (Google + Anonymous sign-in). Add service account JSON path as `FIREBASE_CREDENTIALS_PATH`, and matching `NEXT_PUBLIC_FIREBASE_*` / `VITE_FIREBASE_*` vars in frontend env files. With auth disabled (default), the stack runs as before without tokens.
+
 ### 2. Triage Engine
 
 ```bash
@@ -70,7 +72,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — check in patients and connect the wide-angle LiveKit feed.
+Open http://localhost:5173 — **Sign in with Google** (when Firebase auth is on), check in patients, and connect the wide-angle LiveKit feed.
 
 Room camera + fall detection: http://localhost:5173/camera
 

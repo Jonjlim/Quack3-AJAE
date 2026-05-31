@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
+from app.deps.auth import require_nurse
+from app.firebase_app import FirebaseUser
 from app.services.events import EventBus
 from app.services.state import state_service
 from app.ws.manager import manager
@@ -19,7 +21,10 @@ events = EventBus(manager, state_service)
 
 
 @router.post("/intake", response_model=IntakeResponse, status_code=status.HTTP_201_CREATED)
-async def create_intake(body: IntakeRequest) -> IntakeResponse:
+async def create_intake(
+    body: IntakeRequest,
+    _nurse: FirebaseUser = Depends(require_nurse),
+) -> IntakeResponse:
     patient_id = f"pat-{uuid.uuid4().hex[:6]}"
     now = datetime.now(timezone.utc)
 

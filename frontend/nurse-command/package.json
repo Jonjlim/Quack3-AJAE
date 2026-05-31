@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^11.10.0",
     "livekit-client": "^2.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

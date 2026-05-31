@@ -1,16 +1,29 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from livekit import api
 
 from app.config import settings
-from shared.schemas.telemetry import LiveKitTokenRequest, LiveKitTokenResponse
+from app.deps.auth import assert_patient_match, require_firebase_user
+from app.firebase_app import FirebaseUser, firebase_auth_enabled
+from shared.schemas.telemetry import LiveKitRole, LiveKitTokenRequest, LiveKitTokenResponse
 
 router = APIRouter(prefix="/api/v1", tags=["livekit"])
 
 
 @router.post("/livekit/token", response_model=LiveKitTokenResponse)
-async def create_livekit_token(body: LiveKitTokenRequest) -> LiveKitTokenResponse:
+async def create_livekit_token(
+    body: LiveKitTokenRequest,
+    user: FirebaseUser = Depends(require_firebase_user),
+) -> LiveKitTokenResponse:
+    if firebase_auth_enabled():
+        if body.role == LiveKitRole.PATIENT:
+            assert_patient_match(user, body.identity)
+        elif user.role != "nurse":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Nurse role required",
+            )
     if not settings.livekit_api_key or not settings.livekit_api_secret:
         raise HTTPException(status_code=503, detail="LiveKit not configured")
 

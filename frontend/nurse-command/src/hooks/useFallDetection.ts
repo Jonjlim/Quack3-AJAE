@@ -2,6 +2,8 @@ import type { BrowserFallReportRequest } from "@shared/types/telemetry";
 import { useEffect, useRef } from "react";
 import { createBrowserFallDetector } from "../lib/browserFallDetector";
 
+import { authFetch } from "../lib/auth-fetch";
+
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 /**
@@ -29,7 +31,7 @@ export function useFallDetection(stream: MediaStream | null, enabled: boolean): 
       };
 
       try {
-        await fetch(`${API_BASE}/api/v1/alerts/fall-report`, {
+        await authFetch(`${API_BASE}/api/v1/alerts/fall-report`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
