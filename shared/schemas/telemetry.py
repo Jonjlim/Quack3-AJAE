@@ -209,3 +209,44 @@ class SceneIntelRppgResponse(BaseModel):
     biometric: BiometricReading | None = None
     alert: AlertEvent | None = None
     broadcast: bool = False
+
+
+# ── Gemini Case File ──────────────────────────────────────────────────────────
+
+
+class CasefileMessage(BaseModel):
+    """Single chat turn between patient and Gemini."""
+
+    role: Literal["patient", "gemini"]
+    content: str
+    timestamp: datetime
+
+
+class CasefileConversation(BaseModel):
+    """Full conversation history for one patient."""
+
+    patient_id: str
+    messages: list[CasefileMessage] = []
+    started_at: datetime | None = None
+
+
+class CasefileChatRequest(BaseModel):
+    """Text-based chat request (audio uses multipart form)."""
+
+    text: str
+
+
+class CasefileChatResponse(BaseModel):
+    """Response from a single chat turn."""
+
+    response: str
+    transcript: str
+    message_count: int
+
+
+class CasefileReportResponse(BaseModel):
+    """Generated case-file report."""
+
+    patient_id: str
+    report_markdown: str
+    generated_at: datetime
