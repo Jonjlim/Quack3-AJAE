@@ -1,12 +1,6 @@
 import { useEffect } from "react";
 import QRCode from "react-qr-code";
-
-const PATIENT_CLIENT_URL =
-  import.meta.env.VITE_PATIENT_CLIENT_URL ?? "https://localhost:3000";
-
-export function buildPatientQueueUrl(patientId: string): string {
-  return `${PATIENT_CLIENT_URL}/queue?patientId=${encodeURIComponent(patientId)}`;
-}
+import { buildPatientQueueUrl } from "../lib/api-base";
 
 interface CheckInQrModalProps {
   displayName: string;
