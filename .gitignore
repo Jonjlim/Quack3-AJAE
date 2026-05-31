@@ -10,6 +10,8 @@ pyvenv.cfg
 
 .env
 .secrets
+firebase-service-account.json
+*-firebase-adminsdk-*.json
 *.local
 
 bin/

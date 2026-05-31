@@ -3,6 +3,7 @@ import os
 
 # Must be set before app import so the background ticker stays off during tests.
 os.environ.setdefault("TESTING", "true")
+os.environ.setdefault("REQUIRE_FIREBASE_AUTH", "false")
 
 import pytest
 from fastapi.testclient import TestClient

@@ -1,8 +1,10 @@
 import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
+from app.deps.auth import assert_patient_match, require_firebase_user
+from app.firebase_app import FirebaseUser
 from app.services.events import EventBus
 from app.services.rppg_bridge import RppgUnavailableError, run_rppg_analysis
 from app.services.state import state_service
@@ -21,8 +23,10 @@ events = EventBus(manager, state_service)
 async def analyze_rppg(
     patient_id: str = Form(...),
     video: UploadFile = File(...),
+    user: FirebaseUser = Depends(require_firebase_user),
 ) -> SceneIntelRppgResponse:
     """Run rPPG heart-rate analysis on a patient video clip."""
+    assert_patient_match(user, patient_id)
     patient = state_service.get_patient(patient_id)
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")

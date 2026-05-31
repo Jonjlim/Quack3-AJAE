@@ -1,16 +1,24 @@
+import { linkPatientSession } from "@/lib/auth-api";
+import { authFetch, wsUrlWithToken } from "@/lib/auth-fetch";
+import { ensureAnonymousAuth, isFirebaseAuthEnabled } from "@/lib/firebase";
 import { getApiBase, getWsBase } from "@/lib/api-base";
 import { MOCK_QUEUE_STATUS } from "@/lib/mock-data";
 import type { QueueStatus, TelemetryEnvelope } from "@shared/types/telemetry";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
-/** Validates the patient exists (registered by nurse) before opening the queue view. */
+/** Validates the patient exists and links Firebase session before opening queue. */
 export async function signInWithPatientId(patientId: string): Promise<QueueStatus> {
   const id = patientId.trim();
   if (!id) {
     throw new Error("Enter the patient ID the nurse gave you.");
   }
-  return getQueueStatus(id);
+  if (isFirebaseAuthEnabled()) {
+    await ensureAnonymousAuth();
+  }
+  const queue = await getQueueStatus(id);
+  await linkPatientSession(id);
+  return queue;
 }
 
 export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
@@ -19,7 +27,9 @@ export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
     return { ...MOCK_QUEUE_STATUS, patient_id: patientId };
   }
 
-  const response = await fetch(`${getApiBase()}/api/v1/queue/${encodeURIComponent(patientId)}`);
+  const response = await authFetch(
+    `${getApiBase()}/api/v1/queue/${encodeURIComponent(patientId)}`,
+  );
   if (response.status === 404) {
     throw new Error("Patient ID not found. Ask the nurse for your ID.");
   }
@@ -29,13 +39,16 @@ export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
   return response.json() as Promise<QueueStatus>;
 }
 
-export function connectPatientSocket<T = Record<string, unknown>>(
+export async function connectPatientSocket<T = Record<string, unknown>>(
   patientId: string,
   onMessage: (data: TelemetryEnvelope<T>) => void,
-): WebSocket | null {
+): Promise<WebSocket | null> {
   if (USE_MOCK) return null;
 
-  const ws = new WebSocket(`${getWsBase()}/ws/patient/${encodeURIComponent(patientId)}`);
+  const url = await wsUrlWithToken(
+    `${getWsBase()}/ws/patient/${encodeURIComponent(patientId)}`,
+  );
+  const ws = new WebSocket(url);
 
   ws.onmessage = (event) => {
     try {
@@ -79,11 +92,14 @@ export function sendCameraStatus(ws: WebSocket, patientId: string, enabled: bool
 export async function setCameraEnabled(patientId: string, enabled: boolean): Promise<void> {
   if (USE_MOCK) return;
 
-  const response = await fetch(`${getApiBase()}/api/v1/patients/${encodeURIComponent(patientId)}/camera`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ patient_id: patientId, enabled }),
-  });
+  const response = await authFetch(
+    `${getApiBase()}/api/v1/patients/${encodeURIComponent(patientId)}/camera`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patient_id: patientId, enabled }),
+    },
+  );
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(detail || `Camera status failed (${response.status})`);

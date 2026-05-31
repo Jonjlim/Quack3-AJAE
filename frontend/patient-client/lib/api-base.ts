@@ -20,10 +20,12 @@ function isPrivateLanHost(hostname: string): boolean {
   );
 }
 
-/** Same-origin proxy (Next rewrites) — tunnel URLs and LAN HTTPS dev. */
+/** Same-origin proxy (Next rewrites) — HTTPS dev avoids mixed-content blocks on :8000. */
 function useSameOriginProxy(hostname: string, protocol: string): boolean {
   if (isTunnelHost(hostname)) return true;
-  return protocol === "https:" && isPrivateLanHost(hostname);
+  if (protocol !== "https:") return false;
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+  return isPrivateLanHost(hostname);
 }
 
 /** Resolve backend URL — LAN HTTPS + tunnel use same-origin proxy; localhost hits :8000 directly. */

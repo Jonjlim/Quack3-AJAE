@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.deps.auth import assert_patient_match, require_firebase_user, require_nurse
+from app.firebase_app import FirebaseUser, firebase_auth_enabled
 from app.services.events import EventBus
 from app.services.state import state_service
 from app.ws.manager import manager
@@ -23,7 +25,10 @@ events = EventBus(manager, state_service)
 
 
 @router.get("/queue/{patient_id}", response_model=QueueStatus)
-async def get_queue_status(patient_id: str) -> QueueStatus:
+async def get_queue_status(
+    patient_id: str,
+    _user: FirebaseUser = Depends(require_firebase_user),
+) -> QueueStatus:
     queue = state_service.get_queue_status(patient_id)
     if queue is None:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -31,18 +36,27 @@ async def get_queue_status(patient_id: str) -> QueueStatus:
 
 
 @router.get("/acuity-load", response_model=AcuityLoad)
-async def get_acuity_load() -> AcuityLoad:
+async def get_acuity_load(_nurse: FirebaseUser = Depends(require_nurse)) -> AcuityLoad:
     return state_service.acuity_load
 
 
 @router.get("/patients", response_model=list[PatientRecord])
-async def get_patients() -> list[PatientRecord]:
+async def get_patients(_nurse: FirebaseUser = Depends(require_nurse)) -> list[PatientRecord]:
     return state_service.get_patients()
 
 
 @router.post("/patients/{patient_id}/camera", response_model=PatientRecord)
-async def set_patient_camera(patient_id: str, body: CameraStatusPayload) -> PatientRecord:
+async def set_patient_camera(
+    patient_id: str,
+    body: CameraStatusPayload,
+    user: FirebaseUser = Depends(require_firebase_user),
+) -> PatientRecord:
     """Reliable camera opt-in before rPPG sampling (WebSocket can race the first clip)."""
+    if firebase_auth_enabled():
+        if user.role == "patient":
+            assert_patient_match(user, patient_id)
+        elif user.role != "nurse":
+            raise HTTPException(status_code=403, detail="Nurse or patient role required")
     if body.patient_id != patient_id:
         raise HTTPException(status_code=400, detail="patient_id in body must match URL")
     patient = state_service.get_patient(patient_id)
@@ -56,7 +70,11 @@ async def set_patient_camera(patient_id: str, body: CameraStatusPayload) -> Pati
 
 
 @router.post("/alerts/{alert_id}/ack", response_model=AlertAckResponse)
-async def acknowledge_alert(alert_id: str, body: AlertAckRequest) -> AlertAckResponse:
+async def acknowledge_alert(
+    alert_id: str,
+    body: AlertAckRequest,
+    _nurse: FirebaseUser = Depends(require_nurse),
+) -> AlertAckResponse:
     alert = state_service.acknowledge_alert(alert_id)
     if alert is None:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -69,7 +87,10 @@ async def acknowledge_alert(alert_id: str, body: AlertAckRequest) -> AlertAckRes
 
 
 @router.post("/alerts/fall-report", response_model=FallReportResponse)
-async def report_browser_fall(body: BrowserFallReportRequest) -> FallReportResponse:
+async def report_browser_fall(
+    body: BrowserFallReportRequest,
+    _nurse: FirebaseUser = Depends(require_nurse),
+) -> FallReportResponse:
     """Ingest a fall detected in the browser and broadcast CRITICAL_FALL to nurses."""
     if not should_accept_fall_report(body.confidence, body.danger_level):
         raise HTTPException(
@@ -89,7 +110,9 @@ async def report_browser_fall(body: BrowserFallReportRequest) -> FallReportRespo
 
 
 @router.post("/demo/trigger-fall", response_model=DemoFallTriggerResponse)
-async def trigger_demo_fall() -> DemoFallTriggerResponse:
+async def trigger_demo_fall(
+    _nurse: FirebaseUser = Depends(require_nurse),
+) -> DemoFallTriggerResponse:
     alert = state_service.create_demo_fall_alert()
     await events.alert(alert)
     return DemoFallTriggerResponse(alert=alert, broadcast=True)

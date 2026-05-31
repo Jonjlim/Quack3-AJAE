@@ -7,6 +7,7 @@ import {
   type LocalVideoTrack,
 } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { authFetch } from "../lib/auth-fetch";
 import { BROAD_CAMERA_IDENTITY, ER_WAITING_ROOM } from "../lib/livekit-constants";
 
 export type BroadCameraStatus = "starting" | "live" | "replaced" | "error" | "idle";
@@ -41,7 +42,7 @@ export function useBroadCameraPublisher() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/v1/livekit/token`, {
+      const response = await authFetch(`${API_BASE}/api/v1/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

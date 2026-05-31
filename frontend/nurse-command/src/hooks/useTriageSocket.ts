@@ -7,6 +7,8 @@ import type {
   PatientRecord,
   TelemetryEnvelope,
 } from "@shared/types/telemetry";
+import { authFetch, registerNurseSession, wsUrlWithToken } from "../lib/auth-fetch";
+import { isFirebaseAuthEnabled } from "../lib/firebase";
 import { MOCK_PATIENTS, MOCK_INITIAL_ALERTS } from "../mock/mockData";
 
 export interface CheckInData {
@@ -70,10 +72,21 @@ export function useTriageSocket() {
   useEffect(() => {
     if (USE_MOCK) return;
 
-    const ws = new WebSocket(`${API_BASE.replace("http", "ws")}/ws/nurse`);
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onmessage = (event) => {
+    let ws: WebSocket | null = null;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        if (isFirebaseAuthEnabled()) {
+          await registerNurseSession();
+        }
+        if (cancelled) return;
+        const url = await wsUrlWithToken("/ws/nurse");
+        if (cancelled) return;
+        ws = new WebSocket(url);
+        ws.onopen = () => setConnected(true);
+        ws.onclose = () => setConnected(false);
+        ws.onmessage = (event) => {
       try {
         const envelope = JSON.parse(event.data as string) as TelemetryEnvelope;
         if (envelope.type === "PATIENTS_SNAPSHOT") {
@@ -100,8 +113,16 @@ export function useTriageSocket() {
       } catch {
         // ignore malformed messages
       }
+      };
+      } catch {
+        setConnected(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      ws?.close();
     };
-    return () => ws.close();
   }, []);
 
   // Demo mode: simulate P-01 deteriorating
@@ -153,7 +174,7 @@ export function useTriageSocket() {
 
   const acknowledgeAlert = useCallback(async (alertId: string) => {
     if (!USE_MOCK) {
-      await fetch(`${API_BASE}/api/v1/alerts/${alertId}/ack`, {
+      await authFetch(`${API_BASE}/api/v1/alerts/${alertId}/ack`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nurse_id: "nurse-01" }),
@@ -192,7 +213,7 @@ export function useTriageSocket() {
       return { display_name, patient_id: newPatient.patient_id };
     }
 
-    const response = await fetch(`${API_BASE}/api/v1/intake`, {
+    const response = await authFetch(`${API_BASE}/api/v1/intake`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -210,7 +231,7 @@ export function useTriageSocket() {
     const patient_id = intake.patient_id;
 
     if (data.cameraOptIn) {
-      await fetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patient_id)}/camera`, {
+      await authFetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patient_id)}/camera`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patient_id, enabled: true }),

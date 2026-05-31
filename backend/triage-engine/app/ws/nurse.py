@@ -2,8 +2,10 @@ import asyncio
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
+from app.deps.ws_auth import WsAuthError, verify_ws_token
+from app.firebase_app import firebase_auth_enabled
 from app.services.events import EventBus
 from app.services.state import state_service
 from app.ws.manager import manager
@@ -21,7 +23,19 @@ events = EventBus(manager, state_service)
 
 
 @router.websocket("/ws/nurse")
-async def nurse_websocket(websocket: WebSocket) -> None:
+async def nurse_websocket(
+    websocket: WebSocket,
+    token: str | None = Query(None),
+) -> None:
+    try:
+        user = verify_ws_token(token)
+        if firebase_auth_enabled() and user.role != "nurse":
+            await websocket.close(code=1008, reason="Nurse role required")
+            return
+    except WsAuthError as exc:
+        await websocket.close(code=1008, reason=str(exc))
+        return
+
     await manager.connect("nurse", websocket)
     try:
         patients = state_service.get_patients()
@@ -39,7 +53,22 @@ async def nurse_websocket(websocket: WebSocket) -> None:
 
 
 @router.websocket("/ws/patient/{patient_id}")
-async def patient_websocket(websocket: WebSocket, patient_id: str) -> None:
+async def patient_websocket(
+    websocket: WebSocket,
+    patient_id: str,
+    token: str | None = Query(None),
+) -> None:
+    try:
+        user = verify_ws_token(token)
+        if firebase_auth_enabled() and (
+            user.role != "patient" or user.patient_id != patient_id
+        ):
+            await websocket.close(code=1008, reason="Patient session mismatch")
+            return
+    except WsAuthError as exc:
+        await websocket.close(code=1008, reason=str(exc))
+        return
+
     group = f"patient:{patient_id}"
     await manager.connect(group, websocket)
     try:

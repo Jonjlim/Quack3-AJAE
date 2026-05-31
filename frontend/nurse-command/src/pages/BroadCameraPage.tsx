@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useBroadCameraPublisher } from "../hooks/useBroadCameraPublisher";
 import { useFallDetection } from "../hooks/useFallDetection";
 
@@ -13,29 +14,62 @@ function StatusIndicator({ live }: { live: boolean }) {
 export default function BroadCameraPage() {
   const { status, errorMessage, stream, connect } = useBroadCameraPublisher();
   const isLive = status === "live";
-
-  useFallDetection(stream, isLive);
   const isStarting = status === "starting";
   const wasReplaced = status === "replaced";
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { cvReady } = useFallDetection(stream, isLive, canvasRef);
+
+  // Mirror stream into the visible video element
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.srcObject = stream;
+  }, [stream]);
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-8 text-center shadow-xl">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-8 text-center shadow-xl">
         <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">
           ER-OVERWATCH
         </p>
         <h1 className="mt-2 text-2xl font-bold">Room Camera</h1>
 
-        <div className="mt-10 flex flex-col items-center gap-4">
+        <div className="mt-6 flex flex-col items-center gap-4">
           <StatusIndicator live={isLive} />
 
           {isLive && (
             <>
-              <p className="text-xl font-semibold text-emerald-300">Recording &amp; uploading</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-semibold text-emerald-300">Live</p>
+                {isLive && !cvReady && (
+                  <span className="animate-pulse rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
+                    CV Loading…
+                  </span>
+                )}
+                {cvReady && (
+                  <span className="rounded-full bg-violet-900 px-2 py-0.5 text-xs font-medium text-violet-300">
+                    CV Active
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-400">
-                Live feed is active. Fall detection runs on this device; nurses see alerts on the
-                command dashboard.
+                Fall detection runs on this device. Alerts appear on the nurse dashboard.
               </p>
+
+              {/* Live preview with skeleton overlay */}
+              <div className="relative w-full overflow-hidden rounded-xl bg-black">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full"
+                />
+                <canvas
+                  ref={canvasRef}
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                />
+              </div>
             </>
           )}
 
@@ -50,8 +84,7 @@ export default function BroadCameraPage() {
             <>
               <p className="text-xl font-semibold text-amber-300">Not recording</p>
               <p className="text-sm text-slate-400">
-                Another device took over this camera feed. Only one room camera can be live at a
-                time.
+                Another device took over this camera feed. Only one room camera can be live at a time.
               </p>
               <button
                 type="button"
@@ -90,3 +123,4 @@ export default function BroadCameraPage() {
     </div>
   );
 }
+

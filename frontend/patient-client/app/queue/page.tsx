@@ -7,6 +7,8 @@ import { CameraToggle } from "../components/CameraToggle";
 import { CasefileChat } from "../components/CasefileChat";
 import { HelpButton } from "../components/HelpButton";
 import { MOCK_ACUITY_LOAD, MOCK_QUEUE_STATUS } from "@/lib/mock-data";
+import { linkPatientSession } from "@/lib/auth-api";
+import { isFirebaseAuthEnabled, ensureAnonymousAuth } from "@/lib/firebase";
 import {
   connectPatientSocket,
   getQueueStatus,
@@ -53,39 +55,58 @@ function QueueContent() {
 
   useEffect(() => {
     if (!patientId) return;
-    setFetchError(null);
-    getQueueStatus(patientId)
-      .then(setQueue)
-      .catch((err) => {
+
+    let cancelled = false;
+
+    async function connectQueue() {
+      setFetchError(null);
+      try {
+        if (isFirebaseAuthEnabled()) {
+          await ensureAnonymousAuth();
+          await linkPatientSession(patientId);
+        }
+
+        const queue = await getQueueStatus(patientId);
+        if (cancelled) return;
+        setQueue(queue);
+
+        const ws = await connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
+          if (data.type === "QUEUE_UPDATE" && data.payload) {
+            setQueue(data.payload);
+            setFetchError(null);
+          }
+        });
+        if (cancelled) {
+          ws?.close();
+          return;
+        }
+        wsRef.current = ws;
+        if (!ws) {
+          setWsConnected(false);
+          return;
+        }
+        ws.onopen = () => setWsConnected(true);
+        ws.onclose = () => {
+          setWsConnected(false);
+          wsRef.current = null;
+        };
+        ws.onerror = () => setWsConnected(false);
+      } catch (err) {
+        if (cancelled) return;
         if (isMockMode()) {
           setQueue(MOCK_QUEUE_STATUS);
-        } else {
-          setFetchError(
-            err instanceof Error ? err.message : "Could not load queue status.",
-          );
+          return;
         }
-      });
-
-    const ws = connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
-      if (data.type === "QUEUE_UPDATE" && data.payload) {
-        setQueue(data.payload);
-        setFetchError(null);
+        setFetchError(err instanceof Error ? err.message : "Could not load queue status.");
+        setWsConnected(false);
       }
-    });
-    wsRef.current = ws;
-
-    if (!ws) {
-      setWsConnected(false);
-      return;
     }
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => {
-      setWsConnected(false);
-      wsRef.current = null;
-    };
-    ws.onerror = () => setWsConnected(false);
+
+    void connectQueue();
+
     return () => {
-      ws.close();
+      cancelled = true;
+      wsRef.current?.close();
       wsRef.current = null;
     };
   }, [patientId]);

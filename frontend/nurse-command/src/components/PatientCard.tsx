@@ -158,7 +158,15 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
         )}
       </div>
 
-      {/* Row 4: wait time */}
+      {/* Row 4: AI triage reasoning */}
+      {patient.triage_reasoning && (
+        <p className="mt-1.5 line-clamp-2 text-[11px] italic text-slate-500">
+          <span className="not-italic font-medium text-violet-400">AI Analysis · </span>
+          {patient.triage_reasoning}
+        </p>
+      )}
+
+      {/* Row 5: wait time */}
       <p className="mt-1.5 text-xs text-slate-600">
         Waiting: {formatElapsed(patient.wait_minutes, extraSeconds)}
       </p>

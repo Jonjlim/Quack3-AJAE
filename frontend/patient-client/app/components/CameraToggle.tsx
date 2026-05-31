@@ -1,6 +1,7 @@
 "use client";
 
 import { assertCameraAvailable, cameraUnavailableMessage } from "@/lib/camera-utils";
+import { authFetch } from "@/lib/auth-fetch";
 import { getApiBase } from "@/lib/api-base";
 import type { BiometricReading, LiveKitTokenResponse } from "@shared/types/telemetry";
 import { useRppgSampler } from "@/lib/useRppgSampler";
@@ -119,7 +120,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
     try {
       assertCameraAvailable();
 
-      const response = await fetch(`${getApiBase()}/api/v1/livekit/token`, {
+      const response = await authFetch(`${getApiBase()}/api/v1/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ room: roomName, identity, role: "patient" }),
