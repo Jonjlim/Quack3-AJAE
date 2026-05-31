@@ -21,11 +21,11 @@ const TRIAGE_CONFIG: Record<
   AcuityLevel,
   { num: number; label: string; desc: string; color: string; dimBg: string; dimText: string }
 > = {
-  RESUSCITATION: { num: 1, label: "Resuscitation", desc: "Immediate life threat",  color: "#E24B4A", dimBg: "#2d0e0e", dimText: "#E24B4A90" },
-  EMERGENT:      { num: 2, label: "Emergent",      desc: "May deteriorate rapidly", color: "#f97316", dimBg: "#2d1508", dimText: "#f9731690" },
-  URGENT:        { num: 3, label: "Urgent",        desc: "Needs prompt care",       color: "#eab308", dimBg: "#2a2508", dimText: "#eab30890" },
-  LESS_URGENT:   { num: 4, label: "Less urgent",   desc: "Stable, can wait",        color: "#22c55e", dimBg: "#0a2d12", dimText: "#22c55e90" },
-  NON_URGENT:    { num: 5, label: "Non-urgent",    desc: "Minor complaint",          color: "#3b82f6", dimBg: "#08182d", dimText: "#3b82f690" },
+  RESUSCITATION: { num: 1, label: "Resuscitation", desc: "Immediate life threat",  color: "#E24B4A", dimBg: "#fef2f2", dimText: "#b91c1c" },
+  EMERGENT:      { num: 2, label: "Emergent",      desc: "May deteriorate rapidly", color: "#f97316", dimBg: "#fff7ed", dimText: "#c2410c" },
+  URGENT:        { num: 3, label: "Urgent",        desc: "Needs prompt care",       color: "#eab308", dimBg: "#fefce8", dimText: "#a16207" },
+  LESS_URGENT:   { num: 4, label: "Less urgent",   desc: "Stable, can wait",        color: "#22c55e", dimBg: "#f0fdf4", dimText: "#15803d" },
+  NON_URGENT:    { num: 5, label: "Non-urgent",    desc: "Minor complaint",          color: "#3b82f6", dimBg: "#eff6ff", dimText: "#1d4ed8" },
 };
 
 const ACUITY_ORDER: AcuityLevel[] = ["RESUSCITATION", "EMERGENT", "URGENT", "LESS_URGENT", "NON_URGENT"];
@@ -197,7 +197,7 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
     }
   }
 
-  const submitColor = acuity ? TRIAGE_CONFIG[acuity].color : "#1d4ed8";
+  const submitColor = acuity ? TRIAGE_CONFIG[acuity].color : "#2563eb";
   const activeTriageColor = acuity ? TRIAGE_CONFIG[acuity].color : "#3b82f6";
 
   // ─── Layout ───────────────────────────────────────────────────────────────
@@ -208,35 +208,35 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
       {/* Success toast */}
       {successCheckin && (
         <div className="flex flex-shrink-0 flex-col gap-1 rounded-lg px-4 py-2"
-          style={{ background: "#0d1a0f", border: "1px solid #63992260" }}>
-          <p className="text-sm font-semibold text-white">
-            <span style={{ color: "#639922" }}>✓ {successCheckin.display_name}</span> checked in —
+          style={{ background: "#f0fdf4", border: "1px solid #86efac" }}>
+          <p className="text-sm font-semibold" style={{ color: "#1e293b" }}>
+            <span style={{ color: "#15803d" }}>✓ {successCheckin.display_name}</span> checked in —
             share this ID with the patient:
           </p>
-          <p className="font-mono text-base font-bold tracking-wide text-emerald-300">
+          <p className="font-mono text-base font-bold tracking-wide" style={{ color: "#15803d" }}>
             {successCheckin.patient_id}
           </p>
         </div>
       )}
 
       {submitError && (
-        <p className="flex-shrink-0 rounded-lg px-4 py-2 text-sm text-red-300"
-          style={{ background: "#1a0d0d", border: "1px solid #7f1d1d60" }}>
+        <p className="flex-shrink-0 rounded-lg px-4 py-2 text-sm"
+          style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626" }}>
           {submitError}
         </p>
       )}
 
       {/* Row 1 — patient info bar */}
       <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5"
-        style={{ background: "#0d1526", border: "1px solid #1e293b" }}>
+        style={{ background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <input type="text" value={name} onChange={(e) => setName(e.target.value)}
           placeholder="Patient name"
-          className="flex-1 bg-transparent text-sm text-white placeholder-slate-600 outline-none" />
-        <div className="h-4 w-px bg-slate-800" />
+          className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
+        <div className="h-4 w-px bg-slate-200" />
         <input type="number" value={age} onChange={(e) => setAge(e.target.value)}
           placeholder="Age" min={0} max={120}
-          className="w-14 bg-transparent text-sm text-white placeholder-slate-600 outline-none" />
-        <div className="h-4 w-px bg-slate-800" />
+          className="w-14 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
+        <div className="h-4 w-px bg-slate-200" />
         <div className="flex gap-1">
           {(["M", "F", "NB"] as const).map((s) => {
             const full = s === "M" ? "Male" : s === "F" ? "Female" : "Non-binary";
@@ -254,13 +254,13 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
             );
           })}
         </div>
-        <div className="h-4 w-px bg-slate-800" />
+        <div className="h-4 w-px bg-slate-200" />
         <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)}
-          className="bg-transparent text-sm text-slate-400 outline-none"
-          style={{ colorScheme: "dark" }} />
+          className="bg-transparent text-sm text-slate-600 outline-none"
+          style={{ colorScheme: "light" }} />
         {recentCheckins.length > 0 && (
           <>
-            <div className="h-4 w-px bg-slate-800" />
+            <div className="h-4 w-px bg-slate-200" />
             <div className="flex gap-2">
               {recentCheckins.slice(0, 3).map((c, i) => (
                 <span key={i} className="rounded px-2 py-0.5 font-mono text-xs font-medium"
@@ -295,8 +295,8 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
               <button key={tile.label} type="button" onClick={() => toggleComplaint(tile.label)}
                 className="relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-lg text-center transition-all"
                 style={{
-                  background: active ? tileColor + "20" : "#0d1526",
-                  border: `1px solid ${active ? tileColor + "80" : "rgba(255,255,255,0.08)"}`,
+                  background: active ? tileColor + "15" : "#f8fafc",
+                  border: `1px solid ${active ? tileColor + "60" : "#e2e8f0"}`,
                 }}>
                 {/* T badge — top-right corner */}
                 {cfg && (
@@ -306,7 +306,7 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
                   </span>
                 )}
                 <span className="text-sm font-semibold leading-tight"
-                  style={{ color: active ? tileColor : "#94a3b8" }}>
+                  style={{ color: active ? tileColor : "#64748b" }}>
                   {tile.label}
                 </span>
               </button>
@@ -317,8 +317,8 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
           <textarea rows={2} value={otherDetail}
             onChange={(e) => setOtherDetail(e.target.value)}
             placeholder="Other / add detail…"
-            className="mt-2 w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 outline-none"
-            style={{ background: "#0d1526", border: "1px solid rgba(255,255,255,0.08)" }} />
+            className="mt-2 w-full resize-none rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
+            style={{ background: "#ffffff", border: "1px solid #e2e8f0" }} />
         )}
         {errors.complaint && (
           <p className="mt-1 text-xs" style={{ color: "#E24B4A" }}>{errors.complaint}</p>
@@ -373,9 +373,9 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
               <button key={s} type="button" onClick={() => toggleSymptom(s)}
                 className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
                 style={{
-                  background: active ? activeTriageColor + "20" : "#0f1929",
-                  color: active ? activeTriageColor : "#94a3b8",
-                  border: `1px solid ${active ? activeTriageColor + "60" : "rgba(255,255,255,0.14)"}`,
+                  background: active ? activeTriageColor + "15" : "#f1f5f9",
+                  color: active ? activeTriageColor : "#64748b",
+                  border: `1px solid ${active ? activeTriageColor + "60" : "#e2e8f0"}`,
                 }}>
                 {s}
               </button>
@@ -384,9 +384,9 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
           <button type="button" onClick={() => setOtherSymptomSelected((v) => !v)}
             className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
             style={{
-              background: otherSymptomSelected ? activeTriageColor + "20" : "#0f1929",
-              color: otherSymptomSelected ? activeTriageColor : "#94a3b8",
-              border: `1px solid ${otherSymptomSelected ? activeTriageColor + "60" : "rgba(255,255,255,0.14)"}`,
+              background: otherSymptomSelected ? activeTriageColor + "15" : "#f1f5f9",
+              color: otherSymptomSelected ? activeTriageColor : "#64748b",
+              border: `1px solid ${otherSymptomSelected ? activeTriageColor + "60" : "#e2e8f0"}`,
             }}>
             Other
           </button>
@@ -397,23 +397,23 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
             value={otherSymptom}
             onChange={(e) => setOtherSymptom(e.target.value)}
             placeholder="Describe symptom…"
-            className="mt-2 w-full rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 outline-none"
-            style={{ background: "#0d1526", border: "1px solid rgba(255,255,255,0.08)" }}
+            className="mt-2 w-full rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
+            style={{ background: "#ffffff", border: "1px solid #e2e8f0" }}
           />
         )}
       </div>
 
       {/* Row 5 — camera monitoring */}
       <div className="flex flex-shrink-0 items-center justify-between rounded-lg px-4 py-2.5"
-        style={{ background: "#0d1526", border: "1px solid rgba(255,255,255,0.07)" }}>
+        style={{ background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div>
-          <p className="text-sm font-medium text-white">Camera monitoring</p>
-          <p className="text-xs text-slate-600">Patient consents to remote biometric monitoring</p>
+          <p className="text-sm font-medium" style={{ color: "#1e293b" }}>Camera monitoring</p>
+          <p className="text-xs text-slate-500">Patient consents to remote biometric monitoring</p>
         </div>
         <button type="button" role="switch" aria-checked={cameraOptIn}
           onClick={() => setCameraOptIn((v) => !v)}
           className="relative h-6 w-11 flex-shrink-0 rounded-full transition-colors"
-          style={{ background: cameraOptIn ? "#3b82f6" : "#1e293b" }}>
+          style={{ background: cameraOptIn ? "#2563eb" : "#e2e8f0" }}>
           <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
             style={{ left: cameraOptIn ? "calc(100% - 1.375rem)" : "2px" }} />
         </button>
@@ -421,16 +421,16 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
 
       {/* Row 6 — AI monitoring config (always-visible, grows to fill remaining space) */}
       <div className="flex min-h-0 flex-1 flex-col rounded-lg p-4"
-        style={{ background: "#0a0f1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+        style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
             AI monitoring config
           </p>
           <span className="rounded-full px-2.5 py-0.5 text-xs font-medium"
             style={{
-              background: acuity ? TRIAGE_CONFIG[acuity].color + "18" : "#1e293b",
+              background: acuity ? TRIAGE_CONFIG[acuity].color + "18" : "#f1f5f9",
               color: acuity ? TRIAGE_CONFIG[acuity].color : "#64748b",
-              border: `1px solid ${acuity ? TRIAGE_CONFIG[acuity].color + "40" : "#334155"}`,
+              border: `1px solid ${acuity ? TRIAGE_CONFIG[acuity].color + "40" : "#e2e8f0"}`,
             }}>
             {cvInstructions.alert_sensitivity} sensitivity
           </span>
@@ -496,7 +496,7 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
         onClick={() => void handleSubmit()}
         disabled={submitting}
         className="flex-shrink-0 w-full rounded-lg py-3 text-base font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{ background: submitColor, color: acuity === "URGENT" ? "#1c1a00" : "white" }}
+        style={{ background: submitColor, color: "white" }}
       >
         {submitting ? "Checking in…" : "Check in patient →"}
       </button>

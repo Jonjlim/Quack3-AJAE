@@ -60,7 +60,7 @@ export interface PatientRecord {
   status: PatientStatus;
   wait_minutes: number;
   chief_complaint: string;
-  triage_reasoning: string | null;
+  triage_reasoning?: string | null;
   camera_enabled: boolean;
   last_biometric: BiometricReading | null;
   created_at: string;

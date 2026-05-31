@@ -1,5 +1,63 @@
 @import "tailwindcss";
 
+/* ── Light-mode card aesthetic ───────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --bg:           #f0f2f5;
+  --surface:      #ffffff;
+  --surface-2:    #f8fafc;
+  --glass-bg:     #ffffff;
+  --glass-surface: #f8fafc;
+  --glass-card:   #ffffff;
+  --glass-border: #e2e8f0;
+  --glass-border-hi: #cbd5e1;
+  --glass-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+
+  /* Accents */
+  --accent:     #2563eb;
+  --accent-dim: rgba(37,99,235,0.10);
+  --accent-hi:  rgba(37,99,235,0.18);
+  --amber:      #d97706;
+  --amber-dim:  rgba(217,119,6,0.12);
+  --critical:   #dc2626;
+  --purple:     #7c3aed;
+
+  /* Text (dark-on-light) */
+  --text:       #1e293b;
+  --text-2:     #475569;
+  --text-muted: #64748b;
+  --text-dim:   #94a3b8;
+
+  /* Legacy aliases */
+  --cc-bg:        #f0f2f5;
+  --cc-surface:   #ffffff;
+  --cc-panel:     #ffffff;
+  --cc-border:    #e2e8f0;
+  --cc-amber:     #d97706;
+  --cc-amber-dim: rgba(217,119,6,0.12);
+  --cc-text:      #1e293b;
+  --cc-muted:     #64748b;
+}
+
+body {
+  background: #f0f2f5;
+  color: var(--text);
+}
+
+/* ── Indigo top-stripe on the header ───────────────────────────────── */
+.cc-header-stripe {
+  border-top: 3px solid var(--accent);
+}
+
+/* ── Liquid glass panel ─────────────────────────────────────────────── */
+/* Apply via style prop: see components. This is the shared recipe.    */
+:root {
+  --glass-panel-bg:     #ffffff;
+  --glass-panel-blur:   none;
+  --glass-panel-border: #e2e8f0;
+  --glass-panel-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+}
+
 @keyframes alert-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.5), 0 0 12px 2px rgba(226, 75, 74, 0.15); border-color: #E24B4A; }
   50%       { box-shadow: 0 0 0 4px rgba(226, 75, 74, 0),  0 0 24px 6px rgba(226, 75, 74, 0.35); border-color: #ff6b6a; }
@@ -16,6 +74,16 @@
 
 .alert-badge-pulse {
   animation: badge-ping 1s ease-in-out infinite;
+}
+
+/* ── Amber pulse for live indicator ──────────────────────────────────────── */
+@keyframes amber-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.amber-pulse {
+  animation: amber-pulse 1.4s ease-in-out infinite;
 }
 
 /* Un-mirror video display only — CV canvases draw in corrected space (no CSS flip). */
