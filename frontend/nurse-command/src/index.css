@@ -1,168 +1,92 @@
 @import "tailwindcss";
 
-@theme {
-  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-/* ── Clinical Utilitarian / Hardware Telemetry ─────────────────────────── */
+/* ── Light-mode card aesthetic ───────────────────────────────────────────── */
 :root {
-  /* Matte surfaces */
-  --bg:           #e4e6e9;
-  --surface:      #fafafa;
-  --surface-2:    #f0f1f3;
-  --border:       #b8bcc4;
-  --border-subtle:#d1d5db;
+  /* Surfaces */
+  --bg:           #f0f2f5;
+  --surface:      #ffffff;
+  --surface-2:    #f8fafc;
+  --glass-bg:     #ffffff;
+  --glass-surface: #f8fafc;
+  --glass-card:   #ffffff;
+  --glass-border: #e2e8f0;
+  --glass-border-hi: #cbd5e1;
+  --glass-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
 
-  /* Functional status colors only */
-  --status-critical: #dc2626;
-  --status-alert:    #d97706;
-  --status-stable:   #15803d;
-  --status-offline:  #9ca3af;
+  /* Accents */
+  --accent:     #2563eb;
+  --accent-dim: rgba(37,99,235,0.10);
+  --accent-hi:  rgba(37,99,235,0.18);
+  --amber:      #d97706;
+  --amber-dim:  rgba(217,119,6,0.12);
+  --critical:   #dc2626;
+  --purple:     #7c3aed;
 
-  /* Text hierarchy */
-  --text:       #111827;
-  --text-2:     #374151;
-  --text-muted: #6b7280;
-  --text-dim:   #9ca3af;
+  /* Text (dark-on-light) */
+  --text:       #1e293b;
+  --text-2:     #475569;
+  --text-muted: #64748b;
+  --text-dim:   #94a3b8;
 
-  /* Minimal accent — selection / active state only */
-  --accent:     #1f2937;
-  --accent-dim: #e5e7eb;
-
-  /* Legacy aliases (components may reference these) */
-  --glass-bg:        var(--surface);
-  --glass-surface:   var(--surface-2);
-  --glass-card:      var(--surface);
-  --glass-border:    var(--border-subtle);
-  --glass-border-hi: var(--border);
-  --glass-shadow:    none;
-  --amber:           var(--status-alert);
-  --amber-dim:       #fef3c7;
-  --critical:        var(--status-critical);
-  --purple:          #374151;
-  --cc-bg:           var(--bg);
-  --cc-surface:      var(--surface);
-  --cc-panel:        var(--surface);
-  --cc-border:       var(--border-subtle);
-  --cc-amber:        var(--status-alert);
-  --cc-amber-dim:    #fef3c7;
-  --cc-text:         var(--text);
-  --cc-muted:        var(--text-muted);
+  /* Legacy aliases */
+  --cc-bg:        #f0f2f5;
+  --cc-surface:   #ffffff;
+  --cc-panel:     #ffffff;
+  --cc-border:    #e2e8f0;
+  --cc-amber:     #d97706;
+  --cc-amber-dim: rgba(217,119,6,0.12);
+  --cc-text:      #1e293b;
+  --cc-muted:     #64748b;
 }
 
 body {
-  background: var(--bg);
+  background: #f0f2f5;
   color: var(--text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Shared panel primitives ───────────────────────────────────────────── */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-
-.panel-header {
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 0.375rem 0.625rem;
-}
-
-.panel-body {
-  padding: 0.375rem;
-}
-
-/* ── Telemetry typography ──────────────────────────────────────────────── */
-.telemetry-label {
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-
-.telemetry-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-
-/* ── Header stripe — flat, no glow ─────────────────────────────────────── */
+/* ── Indigo top-stripe on the header ───────────────────────────────── */
 .cc-header-stripe {
-  border-top: 2px solid var(--accent);
+  border-top: 3px solid var(--accent);
 }
 
-/* ── Critical alert panel — flat border, no shadow/glow ──────────────────── */
+/* ── Liquid glass panel ─────────────────────────────────────────────── */
+/* Apply via style prop: see components. This is the shared recipe.    */
+:root {
+  --glass-panel-bg:     #ffffff;
+  --glass-panel-blur:   none;
+  --glass-panel-border: #e2e8f0;
+  --glass-panel-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+@keyframes alert-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.5), 0 0 12px 2px rgba(226, 75, 74, 0.15); border-color: #E24B4A; }
+  50%       { box-shadow: 0 0 0 4px rgba(226, 75, 74, 0),  0 0 24px 6px rgba(226, 75, 74, 0.35); border-color: #ff6b6a; }
+}
+
 .alert-critical-panel {
-  border-color: var(--status-critical) !important;
-  background: #fef2f2;
+  animation: alert-glow 1.6s ease-in-out infinite;
 }
 
-/* ── Live indicator — opacity pulse only, no glow ────────────────────────── */
-@keyframes signal-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.35; }
-}
-
-.signal-blink {
-  animation: signal-blink 1.4s ease-in-out infinite;
-}
-
-/* ── Status badge pulse — scale only ───────────────────────────────────── */
 @keyframes badge-ping {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.15); }
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%       { transform: scale(1.2); opacity: 0.85; }
 }
 
 .alert-badge-pulse {
   animation: badge-ping 1s ease-in-out infinite;
 }
 
-/* ── Camera feed ───────────────────────────────────────────────────────── */
+/* ── Amber pulse for live indicator ──────────────────────────────────────── */
+@keyframes amber-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.amber-pulse {
+  animation: amber-pulse 1.4s ease-in-out infinite;
+}
+
+/* Un-mirror video display only — CV canvases draw in corrected space (no CSS flip). */
 .camera-feed-correct > video {
   transform: scaleX(-1);
-}
-
-.sensor-frame {
-  border: 1px solid var(--border);
-  border-radius: 0;
-  background: #0a0a0a;
-}
-
-.sensor-overlay {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  line-height: 1;
-  padding: 0.125rem 0.375rem;
-  background: rgba(0, 0, 0, 0.75);
-  color: #d1d5db;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0;
-}
-
-/* ── Manual intake — sharp focus, no glow ──────────────────────────────── */
-.intake-input:focus,
-.intake-input:focus-visible {
-  outline: none;
-  border-color: var(--text) !important;
-  box-shadow: none;
-}
-
-.intake-submit:focus,
-.intake-submit:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: 1px;
-  box-shadow: none;
-}
-
-/* ── Check-in wizard step indicator ───────────────────────────────────── */
-.wizard-step-active {
-  border-bottom-width: 2px;
-  border-bottom-color: var(--text);
 }

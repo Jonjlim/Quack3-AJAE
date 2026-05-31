@@ -54,29 +54,52 @@ export function NurseAuthGate({ children }: NurseAuthGateProps) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <span className="telemetry-label text-[var(--text-dim)]">Initializing…</span>
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: "#f0f2f5", color: "var(--text-muted)" }}
+      >
+        Loading…
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)]">
-        <header className="cc-header-stripe flex-shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-          <p className="telemetry-label text-[var(--text-dim)]">ER · Overwatch</p>
-          <h1 className="text-sm font-semibold tracking-tight">Nurse Command Center</h1>
+      <div className="flex min-h-screen flex-col" style={{ color: "var(--text)" }}>
+        <header
+          className="cc-header-stripe flex-shrink-0 px-5 py-3"
+          style={{
+            background: "#ffffff",
+            borderBottom: "1px solid #e2e8f0",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          }}
+        >
+          <p
+            className="text-[11px] font-bold tracking-[0.12em] uppercase"
+            style={{ color: "var(--accent)" }}
+          >
+            ER · Overwatch
+          </p>
+          <h1 className="text-base font-bold tracking-tight">Nurse Command Center</h1>
         </header>
 
-        <main className="flex flex-1 items-center justify-center px-4 py-6">
-          <div className="panel w-full max-w-sm p-4 text-center">
-            <h2 className="text-sm font-semibold uppercase tracking-widest">Sign In</h2>
-            <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-              Authenticate to access the triage dashboard.
+        <main className="flex flex-1 items-center justify-center px-6 py-8">
+          <div
+            className="w-full max-w-md rounded-2xl border p-8 text-center"
+            style={{
+              background: "#ffffff",
+              borderColor: "#e2e8f0",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+            }}
+          >
+            <h2 className="text-xl font-bold">Sign in</h2>
+            <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
+              Sign in with your Google account to access the triage dashboard.
             </p>
             {error && (
               <p
-                className="mt-3 border border-[var(--status-critical)] bg-red-50 px-2 py-1.5 text-[11px] text-[var(--status-critical)]"
+                className="mt-4 rounded-xl px-3 py-2 text-sm"
+                style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626" }}
                 role="alert"
               >
                 {error}
@@ -86,7 +109,8 @@ export function NurseAuthGate({ children }: NurseAuthGateProps) {
               type="button"
               onClick={() => void handleSignIn()}
               disabled={loading}
-              className="mt-4 w-full border border-slate-800 bg-slate-800 py-2 text-[10px] font-semibold uppercase tracking-widest text-white hover:opacity-90 disabled:opacity-50"
+              className="mt-6 w-full rounded-xl px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "#2563eb" }}
             >
               {loading ? "Signing in…" : "Sign in with Google"}
             </button>
@@ -98,12 +122,16 @@ export function NurseAuthGate({ children }: NurseAuthGateProps) {
 
   return (
     <div className="min-h-screen">
-      <div className="flex items-center justify-end gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[10px] text-[var(--text-muted)]">
+      <div
+        className="flex items-center justify-end gap-3 border-b px-4 py-1.5 text-xs"
+        style={{ background: "#ffffff", borderColor: "#e2e8f0", color: "var(--text-muted)" }}
+      >
         <span>{user.email ?? user.displayName ?? "Nurse"}</span>
         <button
           type="button"
           onClick={() => void handleSignOut()}
-          className="uppercase tracking-wider text-[var(--text-2)] hover:text-[var(--text)]"
+          className="underline hover:opacity-80"
+          style={{ color: "var(--accent)" }}
         >
           Sign out
         </button>
