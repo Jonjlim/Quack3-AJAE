@@ -63,7 +63,9 @@ export function WideAngleFeed({
                 {connected ? "Waiting for patient camera streams…" : "Wide-angle room feed"}
               </p>
               <p className="text-xs text-slate-700">
-                {connected ? "Patient must start camera on queue page" : "Click Connect feed"}
+                {connected
+                  ? "Open /camera on a room device or wait for patient streams"
+                  : "Click Connect feed"}
               </p>
             </div>
           )}
