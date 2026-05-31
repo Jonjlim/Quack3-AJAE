@@ -1,9 +1,21 @@
 /** API client for the Gemini case-file chat feature. */
 
+import { authFetch } from "@/lib/auth-fetch";
 import { getApiBase } from "@/lib/api-base";
 import type { CasefileChatResponse, CasefileMessage } from "@shared/types/telemetry";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+async function parseError(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { detail?: string | { msg?: string }[] };
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail) && body.detail[0]?.msg) return body.detail[0].msg;
+  } catch {
+    // ignore JSON parse errors
+  }
+  return `Chat failed (${res.status})`;
+}
 
 /** Send recorded audio blob to Gemini for transcription + response. */
 export async function sendAudioMessage(
@@ -22,11 +34,11 @@ export async function sendAudioMessage(
   const form = new FormData();
   form.append("audio", audioBlob, "recording.webm");
 
-  const res = await fetch(
+  const res = await authFetch(
     `${getApiBase()}/api/v1/casefile/${encodeURIComponent(patientId)}/chat`,
     { method: "POST", body: form },
   );
-  if (!res.ok) throw new Error(`Chat failed (${res.status})`);
+  if (!res.ok) throw new Error(await parseError(res));
   return res.json() as Promise<CasefileChatResponse>;
 }
 
@@ -44,7 +56,7 @@ export async function sendTextMessage(
     };
   }
 
-  const res = await fetch(
+  const res = await authFetch(
     `${getApiBase()}/api/v1/casefile/${encodeURIComponent(patientId)}/chat-text`,
     {
       method: "POST",
@@ -52,7 +64,7 @@ export async function sendTextMessage(
       body: JSON.stringify({ text }),
     },
   );
-  if (!res.ok) throw new Error(`Chat failed (${res.status})`);
+  if (!res.ok) throw new Error(await parseError(res));
   return res.json() as Promise<CasefileChatResponse>;
 }
 
@@ -60,7 +72,7 @@ export async function sendTextMessage(
 export async function getConversation(patientId: string): Promise<CasefileMessage[]> {
   if (USE_MOCK) return [];
 
-  const res = await fetch(
+  const res = await authFetch(
     `${getApiBase()}/api/v1/casefile/${encodeURIComponent(patientId)}/conversation`,
   );
   if (!res.ok) return [];

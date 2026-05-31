@@ -1,5 +1,7 @@
 """Case-file REST endpoints — audio/text chat + report generation."""
 
+import asyncio
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
@@ -13,7 +15,25 @@ from shared.schemas.telemetry import (
     CasefileReportResponse,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/casefile", tags=["casefile"])
+
+
+def _gemini_http_error(exc: Exception) -> HTTPException:
+    message = str(exc)
+    lower = message.lower()
+    if "GEMINI_API_KEY" in message or "not set" in lower:
+        detail = "AI assistant is not configured on the server (missing GEMINI_API_KEY)."
+    elif isinstance(exc, asyncio.TimeoutError):
+        detail = "AI assistant timed out — please try again."
+    elif "429" in message or "resource_exhausted" in lower or "quota" in lower or "credits are depleted" in lower:
+        detail = "AI assistant is temporarily unavailable (Gemini API quota exceeded). Check billing at Google AI Studio."
+    elif "401" in message or "403" in message or "invalid api key" in lower:
+        detail = "AI assistant is misconfigured (invalid GEMINI_API_KEY)."
+    else:
+        detail = "AI assistant failed to respond — please try again."
+        logger.exception("Casefile Gemini error: %s", message)
+    return HTTPException(status_code=503, detail=detail)
 
 
 @router.post("/{patient_id}/chat", response_model=CasefileChatResponse)
@@ -25,7 +45,10 @@ async def chat_audio(patient_id: str, audio: UploadFile = File(...)) -> Casefile
 
     # Detect MIME type from upload or default to webm
     mime = audio.content_type or "audio/webm"
-    response, transcript = await cf.chat_audio(patient_id, audio_bytes, mime)
+    try:
+        response, transcript = await cf.chat_audio(patient_id, audio_bytes, mime)
+    except Exception as exc:
+        raise _gemini_http_error(exc) from exc
     messages = cf.get_conversation(patient_id)
 
     return CasefileChatResponse(
@@ -41,7 +64,10 @@ async def chat_text(patient_id: str, body: CasefileChatRequest) -> CasefileChatR
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="Empty text")
 
-    response, transcript = await cf.chat_text(patient_id, body.text.strip())
+    try:
+        response, transcript = await cf.chat_text(patient_id, body.text.strip())
+    except Exception as exc:
+        raise _gemini_http_error(exc) from exc
     messages = cf.get_conversation(patient_id)
 
     return CasefileChatResponse(
@@ -69,7 +95,10 @@ async def get_report(patient_id: str) -> CasefileReportResponse:
     if not messages:
         raise HTTPException(status_code=404, detail="No conversation found for this patient")
 
-    markdown = await cf.generate_report(patient_id)
+    try:
+        markdown = await cf.generate_report(patient_id)
+    except Exception as exc:
+        raise _gemini_http_error(exc) from exc
     return CasefileReportResponse(
         patient_id=patient_id,
         report_markdown=markdown,
@@ -84,7 +113,10 @@ async def get_report_pdf(patient_id: str) -> Response:
     if not messages:
         raise HTTPException(status_code=404, detail="No conversation found for this patient")
 
-    pdf_bytes = await cf.generate_report_pdf(patient_id)
+    try:
+        pdf_bytes = await cf.generate_report_pdf(patient_id)
+    except Exception as exc:
+        raise _gemini_http_error(exc) from exc
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

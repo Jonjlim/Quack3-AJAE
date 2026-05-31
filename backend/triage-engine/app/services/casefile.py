@@ -6,6 +6,7 @@ deep context. The nurse can later generate a structured case-file PDF for the do
 Gemini calls are delegated to generalFunctions/GeminiAPI.py.
 """
 
+import asyncio
 import io
 import sys
 import textwrap
@@ -22,8 +23,15 @@ _SCENE_INTEL = str(Path(__file__).resolve().parents[4] / "backend" / "scene-inte
 if _SCENE_INTEL not in sys.path:
     sys.path.insert(0, _SCENE_INTEL)
 
-from generalFunctions.GeminiAPI import query_gemini_audio, query_gemini_chat  # noqa: E402
+from generalFunctions.GeminiAPI import (  # noqa: E402
+    GeminiNotConfiguredError,
+    is_configured,
+    query_gemini_audio,
+    query_gemini_chat,
+)
 from shared.schemas.telemetry import CasefileMessage  # noqa: E402
+
+_GEMINI_TIMEOUT_SECONDS = 45
 
 # ── Editable prompts (change these to tune Gemini behaviour) ─────────────────
 
@@ -123,6 +131,22 @@ def _build_history(patient_id: str) -> list[dict]:
     return history
 
 
+def _ensure_gemini_ready() -> None:
+    if not is_configured():
+        raise GeminiNotConfiguredError(
+            "AI assistant unavailable — set GEMINI_API_KEY in .env and restart the backend"
+        )
+
+
+async def _run_gemini(fn, *args, **kwargs):
+    """Run blocking Gemini SDK calls off the event loop with a timeout."""
+    _ensure_gemini_ready()
+    return await asyncio.wait_for(
+        asyncio.to_thread(fn, *args, **kwargs),
+        timeout=_GEMINI_TIMEOUT_SECONDS,
+    )
+
+
 # ── Chat (audio) ─────────────────────────────────────────────────────────────
 
 async def chat_audio(patient_id: str, audio_bytes: bytes, mime_type: str = "audio/webm") -> tuple[str, str]:
@@ -132,7 +156,8 @@ async def chat_audio(patient_id: str, audio_bytes: bytes, mime_type: str = "audi
     """
     history = _build_history(patient_id)
 
-    raw = query_gemini_audio(
+    raw = await _run_gemini(
+        query_gemini_audio,
         history=history,
         audio_bytes=audio_bytes,
         audio_prompt=AUDIO_INSTRUCTION,
@@ -170,10 +195,18 @@ async def chat_text(patient_id: str, text: str) -> tuple[str, str]:
     _append(patient_id, "patient", text)
     history = _build_history(patient_id)
 
-    gemini_reply = query_gemini_chat(
-        history=history,
-        system_instruction=SYSTEM_PROMPT,
-    )
+    try:
+        gemini_reply = await _run_gemini(
+            query_gemini_chat,
+            history=history,
+            system_instruction=SYSTEM_PROMPT,
+        )
+    except Exception:
+        # Roll back optimistic patient message on failure
+        msgs = _conversations.get(patient_id, [])
+        if msgs and msgs[-1].role == "patient" and msgs[-1].content == text:
+            msgs.pop()
+        raise
 
     if not gemini_reply:
         gemini_reply = "I'm sorry, I couldn't process that. Could you try again?"
@@ -197,7 +230,8 @@ async def generate_report(patient_id: str) -> str:
         for msg in messages
     )
 
-    report = query_gemini_chat(
+    report = await _run_gemini(
+        query_gemini_chat,
         history=[{
             "role": "user",
             "parts": [{"text": f"Conversation transcript:\n\n{convo_text}"}],
