@@ -10,6 +10,7 @@ export default function HomePage() {
 
   async function handleIntake(data: IntakeRequest) {
     const result = await submitIntake(data);
+    sessionStorage.setItem("er-overwatch-patient-id", result.patient_id);
     router.push(`/queue?patientId=${result.patient_id}`);
   }
 

@@ -42,15 +42,15 @@ export function useTriageSocket(): TriageSocketState & {
           const payload = envelope.payload as { patients: PatientRecord[] };
           setPatients(payload.patients);
         } else if (envelope.type === "PATIENT_UPDATE") {
-          const updated = envelope.payload as PatientRecord;
+          const updated = envelope.payload as unknown as PatientRecord;
           setPatients((prev) =>
             prev.map((p) => (p.patient_id === updated.patient_id ? updated : p)),
           );
         } else if (envelope.type === "ALERT") {
-          const alert = envelope.payload as AlertEvent;
+          const alert = envelope.payload as unknown as AlertEvent;
           setActiveAlerts((prev) => [alert, ...prev.filter((a) => a.alert_id !== alert.alert_id)]);
         } else if (envelope.type === "BIOMETRIC") {
-          setLatestBiometric(envelope.payload as BiometricReading);
+          setLatestBiometric(envelope.payload as unknown as BiometricReading);
         }
       } catch {
         // ignore malformed messages

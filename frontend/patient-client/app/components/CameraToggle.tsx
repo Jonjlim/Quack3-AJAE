@@ -11,9 +11,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 interface CameraToggleProps {
   patientId: string;
   room?: string;
+  onCameraChange?: (enabled: boolean) => void;
 }
 
-export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraToggleProps) {
+export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChange }: CameraToggleProps) {
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string>("Camera off");
   const roomRef = useRef<Room | null>(null);
@@ -37,7 +38,8 @@ export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraTogg
     }
     setEnabled(false);
     setStatus("Camera off");
-  }, []);
+    onCameraChange?.(false);
+  }, [onCameraChange]);
 
   useEffect(() => {
     return () => {
@@ -76,6 +78,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraTogg
 
       setEnabled(true);
       setStatus("Streaming to triage nurse");
+      onCameraChange?.(true);
 
       requestAnimationFrame(() => {
         if (videoRef.current) {
@@ -84,15 +87,19 @@ export function CameraToggle({ patientId, room = "er-waiting-room" }: CameraTogg
       });
     } catch {
       await stopStream();
-      setStatus("Connection failed — retry or use mock mode");
+      onCameraChange?.(false);
+      setStatus(
+        "Connection failed — ensure LiveKit is running (docker compose up -d), then retry",
+      );
     }
-  }, [enabled, identity, roomName, stopStream]);
+  }, [enabled, identity, onCameraChange, roomName, stopStream]);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-slate-900">Remote Evaluation</h3>
       <p className="mt-1 text-sm text-slate-500">
-        Share your camera so a nurse can assess you while you wait.
+        Share your camera so a nurse can assess you while you wait. Requires LiveKit
+        running (<code className="text-xs">docker compose up -d</code>).
       </p>
       <video
         ref={videoRef}

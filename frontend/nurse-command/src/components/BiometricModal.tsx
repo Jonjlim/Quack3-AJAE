@@ -1,12 +1,20 @@
 import type { BiometricReading, PatientRecord } from "@shared/types/telemetry";
+import type { RemoteVideoTrack } from "../hooks/useLiveKitRoom";
+import { RemoteVideo } from "./RemoteVideo";
 
 interface BiometricModalProps {
   patient: PatientRecord | null;
   latestBiometric: BiometricReading | null;
+  patientVideo: RemoteVideoTrack | null;
   onClose: () => void;
 }
 
-export function BiometricModal({ patient, latestBiometric, onClose }: BiometricModalProps) {
+export function BiometricModal({
+  patient,
+  latestBiometric,
+  patientVideo,
+  onClose,
+}: BiometricModalProps) {
   if (!patient) return null;
 
   const biometric = latestBiometric?.patient_id === patient.patient_id
@@ -46,8 +54,20 @@ export function BiometricModal({ patient, latestBiometric, onClose }: BiometricM
           </div>
         </div>
 
-        <div className="mt-4 aspect-video rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 text-sm">
-          Patient camera feed placeholder
+        <div className="mt-4 aspect-video overflow-hidden rounded-lg bg-slate-800">
+          {patientVideo ? (
+            <RemoteVideo
+              track={patientVideo.mediaStreamTrack}
+              className="h-full w-full"
+              label={patient.display_name}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              {patient.camera_enabled
+                ? "Camera active — connect LiveKit feed to view"
+                : "Patient camera not streaming"}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,11 +1,35 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Room, RoomEvent, Track, type RemoteTrackPublication } from "livekit-client";
+
+export interface RemoteVideoTrack {
+  identity: string;
+  mediaStreamTrack: MediaStreamTrack;
+}
 
 export function useLiveKitRoom(room = "er-waiting-room", identity = "nurse-01") {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [remoteVideos, setRemoteVideos] = useState<RemoteVideoTrack[]>([]);
+  const roomRef = useRef<Room | null>(null);
 
   const roomName = useMemo(() => room, [room]);
   const participantId = useMemo(() => identity, [identity]);
+
+  const disconnect = useCallback(async () => {
+    const lkRoom = roomRef.current;
+    if (lkRoom) {
+      await lkRoom.disconnect();
+      roomRef.current = null;
+    }
+    setRemoteVideos([]);
+    setConnected(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void disconnect();
+    };
+  }, [disconnect]);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -17,16 +41,70 @@ export function useLiveKitRoom(room = "er-waiting-room", identity = "nurse-01") 
         body: JSON.stringify({ room: roomName, identity: participantId, role: "nurse" }),
       });
       if (!response.ok) throw new Error("Token request failed");
+
+      const tokenData = (await response.json()) as {
+        token: string;
+        url: string;
+      };
+
+      const lkRoom = new Room({ adaptiveStream: true, dynacast: true });
+      roomRef.current = lkRoom;
+
+      const addVideo = (participantIdentity: string, publication: RemoteTrackPublication) => {
+        if (publication.kind !== Track.Kind.Video || !publication.track) return;
+        const mediaStreamTrack = publication.track.mediaStreamTrack;
+        setRemoteVideos((prev) => {
+          const filtered = prev.filter((v) => v.identity !== participantIdentity);
+          return [...filtered, { identity: participantIdentity, mediaStreamTrack }];
+        });
+      };
+
+      const removeVideo = (participantIdentity: string) => {
+        setRemoteVideos((prev) => prev.filter((v) => v.identity !== participantIdentity));
+      };
+
+      lkRoom.on(RoomEvent.TrackSubscribed, (_track, publication, participant) => {
+        addVideo(participant.identity, publication);
+      });
+
+      lkRoom.on(RoomEvent.TrackUnsubscribed, (_track, publication, participant) => {
+        if (publication.kind === Track.Kind.Video) {
+          removeVideo(participant.identity);
+        }
+      });
+
+      lkRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        removeVideo(participant.identity);
+      });
+
+      await lkRoom.connect(tokenData.url, tokenData.token);
+
+      for (const participant of lkRoom.remoteParticipants.values()) {
+        for (const publication of participant.trackPublications.values()) {
+          addVideo(participant.identity, publication);
+        }
+      }
+
       setConnected(true);
     } catch (err) {
+      await disconnect();
       setError(err instanceof Error ? err.message : "Connection failed");
-      setConnected(false);
     }
-  }, [roomName, participantId]);
+  }, [disconnect, participantId, roomName]);
 
-  const disconnect = useCallback(() => {
-    setConnected(false);
-  }, []);
+  const getVideoForIdentity = useCallback(
+    (targetIdentity: string) =>
+      remoteVideos.find((v) => v.identity === targetIdentity) ?? null,
+    [remoteVideos],
+  );
 
-  return { connected, error, connect, disconnect, roomName };
+  return {
+    connected,
+    error,
+    connect,
+    disconnect,
+    roomName,
+    remoteVideos,
+    getVideoForIdentity,
+  };
 }

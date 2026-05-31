@@ -2,6 +2,7 @@ import { BiometricModal } from "./components/BiometricModal";
 import { PatientGrid } from "./components/PatientGrid";
 import { StickyAlertPanel } from "./components/StickyAlertPanel";
 import { WideAngleFeed } from "./components/WideAngleFeed";
+import { useLiveKitRoom } from "./hooks/useLiveKitRoom";
 import { useTriageSocket } from "./hooks/useTriageSocket";
 
 export default function App() {
@@ -14,6 +15,11 @@ export default function App() {
     setSelectedPatient,
     latestBiometric,
   } = useTriageSocket();
+
+  const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01");
+  const patientVideo = selectedPatient
+    ? liveKit.getVideoForIdentity(selectedPatient.patient_id)
+    : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -35,7 +41,13 @@ export default function App() {
         </header>
 
         <div className="grid h-[calc(100vh-10rem)] grid-cols-1 gap-4 lg:grid-cols-2">
-          <WideAngleFeed />
+          <WideAngleFeed
+            connected={liveKit.connected}
+            error={liveKit.error}
+            remoteVideos={liveKit.remoteVideos}
+            onConnect={liveKit.connect}
+            onDisconnect={liveKit.disconnect}
+          />
           <PatientGrid patients={patients} onSelect={setSelectedPatient} />
         </div>
       </div>
@@ -43,6 +55,7 @@ export default function App() {
       <BiometricModal
         patient={selectedPatient}
         latestBiometric={latestBiometric}
+        patientVideo={patientVideo}
         onClose={() => setSelectedPatient(null)}
       />
     </div>
