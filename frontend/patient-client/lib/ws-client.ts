@@ -121,6 +121,4 @@ export async function setCameraEnabled(patientId: string, enabled: boolean): Pro
   }
 }
 
-export function isMockMode(): boolean {
-  return USE_MOCK;
-}
+export { isMockMode } from "@/lib/api-base";
