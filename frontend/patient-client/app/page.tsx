@@ -1,27 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { IntakeForm } from "./components/IntakeForm";
-import { submitIntake } from "@/lib/ws-client";
-import type { IntakeRequest } from "@shared/types/telemetry";
+import { PatientSignInForm } from "./components/PatientSignInForm";
+import { signInWithPatientId } from "@/lib/ws-client";
+
+const PATIENT_ID_KEY = "er-overwatch-patient-id";
 
 export default function HomePage() {
   const router = useRouter();
 
-  async function handleIntake(data: IntakeRequest) {
-    const result = await submitIntake(data);
-    sessionStorage.setItem("er-overwatch-patient-id", result.patient_id);
-    router.push(`/queue?patientId=${result.patient_id}`);
+  async function handleSignIn(patientId: string) {
+    await signInWithPatientId(patientId);
+    sessionStorage.setItem(PATIENT_ID_KEY, patientId);
+    router.push(`/queue?patientId=${encodeURIComponent(patientId)}`);
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col px-4 py-8">
       <header className="mb-8 text-center">
         <p className="text-sm font-medium uppercase tracking-wide text-blue-600">ER-OVERWATCH</p>
-        <h1 className="mt-2 text-3xl font-bold">Welcome — Check In</h1>
-        <p className="mt-2 text-slate-600">Scan complete. Tell us why you&apos;re here.</p>
+        <h1 className="mt-2 text-3xl font-bold">Patient Sign In</h1>
+        <p className="mt-2 text-slate-600">
+          Enter the patient ID from the nurse to view your queue status.
+        </p>
       </header>
-      <IntakeForm onSubmit={handleIntake} />
+      <PatientSignInForm onSignIn={handleSignIn} />
     </main>
   );
 }

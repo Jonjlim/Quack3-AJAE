@@ -61,6 +61,10 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
+# Local test media (do not commit)
+backend/scene-intel/tempvid.MOV
+*.MOV
+
 # Node / frontend
 node_modules/
 .next/

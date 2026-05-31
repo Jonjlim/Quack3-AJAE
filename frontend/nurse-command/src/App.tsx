@@ -6,6 +6,7 @@ import { useFallDetection } from "./hooks/useFallDetection";
 import { useLocalCamera } from "./hooks/useLocalCamera";
 import { useLiveKitRoom } from "./hooks/useLiveKitRoom";
 import { useTriageSocket } from "./hooks/useTriageSocket";
+import { BROAD_CAMERA_IDENTITY } from "./lib/livekit-constants";
 import { CheckInTab } from "./pages/CheckInPage";
 
 type Tab = "dashboard" | "checkin";
@@ -64,7 +65,21 @@ export default function App() {
     addPatient,
   } = useTriageSocket();
 
-  const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01");
+  const allowedVideoIdentities = useMemo(() => {
+    const ids = new Set(patients.map((p) => p.patient_id));
+    ids.add(BROAD_CAMERA_IDENTITY);
+    return ids;
+  }, [patients]);
+
+  const videoLabels = useMemo(() => {
+    const labels: Record<string, string> = { [BROAD_CAMERA_IDENTITY]: "Room camera" };
+    for (const p of patients) {
+      labels[p.patient_id] = p.display_name;
+    }
+    return labels;
+  }, [patients]);
+
+  const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01", allowedVideoIdentities);
   const localCamera = useLocalCamera();
   useFallDetection(localCamera.stream, localCamera.active);
   const patientVideo = selectedPatient
@@ -153,6 +168,7 @@ export default function App() {
                 connected={liveKit.connected}
                 error={liveKit.error}
                 remoteVideos={liveKit.remoteVideos}
+                videoLabels={videoLabels}
                 onConnect={liveKit.connect}
                 onDisconnect={liveKit.disconnect}
                 localStream={localCamera.stream}

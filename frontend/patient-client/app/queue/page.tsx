@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AcuityLoad } from "../components/AcuityLoad";
 import { CameraToggle } from "../components/CameraToggle";
 import { HelpButton } from "../components/HelpButton";
@@ -17,7 +17,7 @@ import type { QueueStatus, TelemetryEnvelope } from "@shared/types/telemetry";
 
 const PATIENT_ID_KEY = "er-overwatch-patient-id";
 
-function resolvePatientId(searchParam: string | null): string {
+function resolvePatientId(searchParam: string | null): string | null {
   if (searchParam) {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(PATIENT_ID_KEY, searchParam);
@@ -28,12 +28,22 @@ function resolvePatientId(searchParam: string | null): string {
     const stored = sessionStorage.getItem(PATIENT_ID_KEY);
     if (stored) return stored;
   }
-  return MOCK_QUEUE_STATUS.patient_id;
+  if (isMockMode()) {
+    return MOCK_QUEUE_STATUS.patient_id;
+  }
+  return null;
 }
 
 function QueueContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const patientId = resolvePatientId(searchParams.get("patientId"));
+
+  useEffect(() => {
+    if (!patientId) {
+      router.replace("/");
+    }
+  }, [patientId, router]);
   const [queue, setQueue] = useState<QueueStatus>(MOCK_QUEUE_STATUS);
   const [helpSent, setHelpSent] = useState(false);
   const [wsConnected, setWsConnected] = useState(isMockMode());
@@ -41,6 +51,7 @@ function QueueContent() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    if (!patientId) return;
     setFetchError(null);
     getQueueStatus(patientId)
       .then(setQueue)
@@ -77,6 +88,10 @@ function QueueContent() {
       wsRef.current = null;
     };
   }, [patientId]);
+
+  if (!patientId) {
+    return <div className="p-8 text-center text-slate-600">Redirecting to sign in…</div>;
+  }
 
   function handleHelp() {
     if (isMockMode()) {

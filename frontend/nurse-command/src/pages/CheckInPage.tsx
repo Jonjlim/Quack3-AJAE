@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AcuityLevel } from "@shared/types/telemetry";
-import type { CheckInData } from "../hooks/useTriageSocket";
+import type { CheckInData, CheckInResult } from "../hooks/useTriageSocket";
 import {
   ALERT_SENSITIVITY,
   COMPLAINT_TILES,
@@ -12,7 +12,7 @@ import {
 } from "../mock/mockData";
 
 interface CheckInTabProps {
-  onSubmit: (data: CheckInData) => { display_name: string };
+  onSubmit: (data: CheckInData) => Promise<CheckInResult>;
 }
 
 // ─── Visual-only constants ────────────────────────────────────────────────────
@@ -72,16 +72,18 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
   const [cameraOptIn, setCameraOptIn] = useState(false);
 
   const [errors, setErrors] = useState<{ complaint?: string; acuity?: string }>({});
-  const [successName, setSuccessName] = useState<string | null>(null);
+  const [successCheckin, setSuccessCheckin] = useState<CheckInResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [recentCheckins, setRecentCheckins] = useState<
-    { name: string; complaint: string; time: string }[]
+    { name: string; patient_id: string; complaint: string; time: string }[]
   >([]);
 
   useEffect(() => {
-    if (!successName) return;
-    const id = setTimeout(() => setSuccessName(null), 3000);
+    if (!successCheckin) return;
+    const id = setTimeout(() => setSuccessCheckin(null), 8000);
     return () => clearTimeout(id);
-  }, [successName]);
+  }, [successCheckin]);
 
   function toggleComplaint(label: string) {
     setSelectedComplaints((prev) => {
@@ -127,7 +129,7 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
     };
   }, [selectedComplaints, symptoms, acuity]);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const complaints = Array.from(selectedComplaints);
     const hasOther = complaints.includes("Other");
     const namedComplaints = complaints.filter((c) => c !== "Other");
@@ -141,39 +143,58 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
     if (!acuity) e.acuity = "Select a triage level.";
     if (Object.keys(e).length) { setErrors(e); return; }
 
-    const result = onSubmit({ complaint: complaintStr, acuity: acuity!, cameraOptIn });
-
-    console.log("Patient check-in payload:", {
-      patient: {
-        name: name || null,
-        age: age ? parseInt(age, 10) : null,
-        sex: sex || null,
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const result = await onSubmit({
         complaint: complaintStr,
-        symptoms: [...Array.from(symptoms), ...(otherSymptomSelected && otherSymptom.trim() ? [otherSymptom.trim()] : [])],
-        triage_level: acuity,
-        camera_opted_in: cameraOptIn,
-        checked_in: new Date().toISOString(),
-        arrival_time: arrivalTime,
-      },
-      cv_instructions: {
-        patient_id: result.display_name,
-        complaint: complaintStr,
-        triage_level: acuity,
-        symptoms: [...Array.from(symptoms), ...(otherSymptomSelected && otherSymptom.trim() ? [otherSymptom.trim()] : [])],
-        ...cvInstructions,
-      },
-    });
+        acuity: acuity!,
+        cameraOptIn,
+        displayName: name.trim() || undefined,
+      });
 
-    setRecentCheckins((prev) => [
-      { name: result.display_name, complaint: complaintStr, time: new Date().toLocaleTimeString() },
-      ...prev.slice(0, 3),
-    ]);
-    setSuccessName(result.display_name);
-    setName(""); setAge(""); setSex(""); setArrivalTime(currentTimeStr());
-    setSelectedComplaints(new Set()); setOtherDetail("");
-    setAcuity(null); setAcuityManual(false);
-    setSymptoms(new Set()); setOtherSymptomSelected(false); setOtherSymptom("");
-    setCameraOptIn(false); setErrors({});
+      console.log("Patient check-in payload:", {
+        patient: {
+          patient_id: result.patient_id,
+          name: name || null,
+          age: age ? parseInt(age, 10) : null,
+          sex: sex || null,
+          complaint: complaintStr,
+          symptoms: [...Array.from(symptoms), ...(otherSymptomSelected && otherSymptom.trim() ? [otherSymptom.trim()] : [])],
+          triage_level: acuity,
+          camera_opted_in: cameraOptIn,
+          checked_in: new Date().toISOString(),
+          arrival_time: arrivalTime,
+        },
+        cv_instructions: {
+          patient_id: result.patient_id,
+          complaint: complaintStr,
+          triage_level: acuity,
+          symptoms: [...Array.from(symptoms), ...(otherSymptomSelected && otherSymptom.trim() ? [otherSymptom.trim()] : [])],
+          ...cvInstructions,
+        },
+      });
+
+      setRecentCheckins((prev) => [
+        {
+          name: result.display_name,
+          patient_id: result.patient_id,
+          complaint: complaintStr,
+          time: new Date().toLocaleTimeString(),
+        },
+        ...prev.slice(0, 3),
+      ]);
+      setSuccessCheckin(result);
+      setName(""); setAge(""); setSex(""); setArrivalTime(currentTimeStr());
+      setSelectedComplaints(new Set()); setOtherDetail("");
+      setAcuity(null); setAcuityManual(false);
+      setSymptoms(new Set()); setOtherSymptomSelected(false); setOtherSymptom("");
+      setCameraOptIn(false); setErrors({});
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Check-in failed");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const submitColor = acuity ? TRIAGE_CONFIG[acuity].color : "#1d4ed8";
@@ -185,14 +206,24 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
     <div className="flex flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
 
       {/* Success toast */}
-      {successName && (
-        <div className="flex flex-shrink-0 items-center gap-2 rounded-lg px-4 py-2"
+      {successCheckin && (
+        <div className="flex flex-shrink-0 flex-col gap-1 rounded-lg px-4 py-2"
           style={{ background: "#0d1a0f", border: "1px solid #63992260" }}>
-          <span style={{ color: "#639922" }}>✓</span>
           <p className="text-sm font-semibold text-white">
-            <span style={{ color: "#639922" }}>{successName}</span> checked in — form reset
+            <span style={{ color: "#639922" }}>✓ {successCheckin.display_name}</span> checked in —
+            share this ID with the patient:
+          </p>
+          <p className="font-mono text-base font-bold tracking-wide text-emerald-300">
+            {successCheckin.patient_id}
           </p>
         </div>
+      )}
+
+      {submitError && (
+        <p className="flex-shrink-0 rounded-lg px-4 py-2 text-sm text-red-300"
+          style={{ background: "#1a0d0d", border: "1px solid #7f1d1d60" }}>
+          {submitError}
+        </p>
       )}
 
       {/* Row 1 — patient info bar */}
@@ -232,9 +263,10 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
             <div className="h-4 w-px bg-slate-800" />
             <div className="flex gap-2">
               {recentCheckins.slice(0, 3).map((c, i) => (
-                <span key={i} className="rounded px-2 py-0.5 text-xs font-medium"
-                  style={{ background: "#63992218", color: "#639922", border: "1px solid #63992230" }}>
-                  {c.name}
+                <span key={i} className="rounded px-2 py-0.5 font-mono text-xs font-medium"
+                  style={{ background: "#63992218", color: "#639922", border: "1px solid #63992230" }}
+                  title={c.name}>
+                  {c.patient_id}
                 </span>
               ))}
             </div>
@@ -459,10 +491,14 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
       </div>
 
       {/* Row 7 — submit */}
-      <button type="button" onClick={handleSubmit}
-        className="flex-shrink-0 w-full rounded-lg py-3 text-base font-bold transition-opacity hover:opacity-90"
-        style={{ background: submitColor, color: acuity === "URGENT" ? "#1c1a00" : "white" }}>
-        Check in patient →
+      <button
+        type="button"
+        onClick={() => void handleSubmit()}
+        disabled={submitting}
+        className="flex-shrink-0 w-full rounded-lg py-3 text-base font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{ background: submitColor, color: acuity === "URGENT" ? "#1c1a00" : "white" }}
+      >
+        {submitting ? "Checking in…" : "Check in patient →"}
       </button>
     </div>
   );

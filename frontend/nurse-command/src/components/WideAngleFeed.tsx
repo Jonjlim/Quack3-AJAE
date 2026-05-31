@@ -6,6 +6,7 @@ interface WideAngleFeedProps {
   connected: boolean;
   error: string | null;
   remoteVideos: RemoteVideoTrack[];
+  videoLabels?: Record<string, string>;
   onConnect: () => void;
   onDisconnect: () => void;
   localStream?: MediaStream | null;
@@ -17,6 +18,7 @@ export function WideAngleFeed({
   connected,
   error,
   remoteVideos,
+  videoLabels = {},
   onConnect,
   onDisconnect,
   localStream,
@@ -91,7 +93,7 @@ export function WideAngleFeed({
                     className="h-full w-full object-cover"
                   />
                   <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
-                    Room camera
+                    Local camera
                   </span>
                 </div>
               )}
@@ -101,7 +103,7 @@ export function WideAngleFeed({
                     key={video.identity}
                     track={video.mediaStreamTrack}
                     className="aspect-video w-full rounded-lg bg-slate-900"
-                    label={video.identity}
+                    label={videoLabels[video.identity] ?? video.identity}
                   />
                 ))}
             </div>
