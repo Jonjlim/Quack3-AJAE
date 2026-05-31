@@ -7,7 +7,6 @@ interface RemoteVideoProps {
   className?: string;
   label?: string;
   enableCV?: boolean;
-  /** Room feeds are large presenter tiles; patient feeds show labels; thumbnails hide overlays. */
   feedRole?: "room" | "patient" | "thumbnail";
   objectFit?: "cover" | "contain";
 }
@@ -58,17 +57,14 @@ export function RemoteVideo({
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    // Wait for the video to start playing before attaching the detector
     const onPlaying = () => {
       const { cleanup, ready } = createNurseFeedDetector(video, canvas, reportFall);
       ready.then(() => setCvReady(true)).catch(() => undefined);
       video.addEventListener("pause", cleanup, { once: true });
-      // Store cleanup on the video element so the effect teardown can call it
       (video as HTMLVideoElement & { __cvCleanup?: () => void }).__cvCleanup = cleanup;
     };
 
     video.addEventListener("playing", onPlaying, { once: true });
-    // If already playing (e.g. track resumed), fire immediately
     if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) onPlaying();
 
     return () => {
@@ -85,12 +81,8 @@ export function RemoteVideo({
 
   return (
     <div
-      className={`relative overflow-hidden ${
-        isRoom
-          ? "flex items-center justify-center bg-slate-950 ring-2 ring-violet-500/50"
-          : isThumbnail
-            ? "bg-slate-950"
-            : "ring-1 ring-sky-500/35"
+      className={`relative overflow-hidden bg-black ${
+        isRoom ? "sensor-frame aspect-video h-full max-h-full w-full max-w-full" : isThumbnail ? "h-full w-full" : "border border-[var(--border)]"
       } ${className}`}
     >
       <div
@@ -111,42 +103,47 @@ export function RemoteVideo({
           />
         )}
       </div>
+
       {!isThumbnail && (
-        <div
-          className={`absolute z-10 flex items-center gap-1.5 ${
-            isRoom ? "bottom-3 left-3" : "bottom-1.5 left-1.5"
-          }`}
-        >
-          <span
-            className={`rounded font-bold uppercase tracking-wide ${
-              isRoom
-                ? "bg-violet-700/90 px-2 py-0.5 text-[10px] text-violet-100"
-                : "bg-sky-800/90 px-1.5 py-px text-[9px] text-sky-100"
-            }`}
-          >
-            {isRoom ? "Room" : "Patient"}
-          </span>
-          {label && (
-            <span
-              className={`rounded bg-black/70 text-white ${
-                isRoom ? "px-2.5 py-1 text-sm font-semibold" : "px-1.5 py-0.5 text-[10px]"
-              }`}
-            >
-              {label}
+        <>
+          {/* Top-left: channel ID */}
+          <div className={`absolute z-10 ${isRoom ? "left-0 top-0" : "left-0 top-0"}`}>
+            <span className="sensor-overlay">
+              {isRoom ? "CH·ROOM" : "CH·PT"}
             </span>
-          )}
+          </div>
+
+          {/* Top-right: CV status */}
           {enableCV && (
-            <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                cvReady
-                  ? "bg-violet-900/80 text-violet-300"
-                  : "animate-pulse bg-slate-800/80 text-slate-500"
-              }`}
-            >
-              {cvReady ? "CV" : "CV…"}
-            </span>
+            <div className="absolute right-0 top-0 z-10">
+              <span
+                className={`sensor-overlay ${
+                  cvReady ? "text-[var(--status-stable)]" : "text-[var(--text-dim)]"
+                }`}
+              >
+                {cvReady ? "CV·ON" : "CV·…"}
+              </span>
+            </div>
           )}
-        </div>
+
+          {/* Bottom-left: label */}
+          {label && (
+            <div className={`absolute z-10 ${isRoom ? "bottom-0 left-0" : "bottom-0 left-0"}`}>
+              <span className="sensor-overlay telemetry-value max-w-[12rem] truncate">
+                {label}
+              </span>
+            </div>
+          )}
+
+          {/* Bottom-right: live indicator for room feeds */}
+          {isRoom && (
+            <div className="absolute bottom-0 right-0 z-10">
+              <span className="sensor-overlay signal-blink text-[var(--status-stable)]">
+                ● REC
+              </span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
