@@ -148,57 +148,52 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
 
   if (!isExpanded) {
     return (
-      <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-5">
-        <h2 className="text-lg font-bold text-blue-900">Talk to Your AI Assistant</h2>
-        <p className="mt-1 text-sm text-blue-700">
-          While you wait, tell us about your symptoms. We&apos;ll prepare notes for your doctor so
-          they can help you faster.
+      <section className="rounded-xl border border-neutral-200/80 bg-surface p-5 shadow-sm">
+        <h2 className="text-section-title">Symptom questions</h2>
+        <p className="mt-2 text-sm text-muted">
+          Answer a few questions while you wait. Your answers help your care team prepare.
         </p>
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="mt-4 w-full rounded-xl bg-blue-600 px-6 py-4 text-base font-bold text-white shadow-md active:bg-blue-700"
+          className="mt-5 w-full rounded-lg bg-sage px-5 py-3 text-base font-medium text-white hover:bg-[#3d5a4e]"
         >
-          Start Talking
+          Open intake questions
         </button>
       </section>
     );
   }
 
-  // ── Expanded chat view ────────────────────────────────────────────────────
-
   return (
-    <section className="rounded-2xl border border-blue-200 bg-white shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-blue-100 px-4 py-3">
+    <section className="overflow-hidden rounded-xl border border-neutral-200/80 bg-surface shadow-sm">
+      <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
         <div>
-          <h2 className="text-sm font-bold text-blue-900">AI Assistant</h2>
-          <p className="text-xs text-blue-500">Building your case notes</p>
+          <h2 className="text-section-title">Symptom questions</h2>
+          <p className="text-sm text-muted">Helps your care team prepare</p>
         </div>
-        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+        <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-muted">
           {messages.length} messages
         </span>
       </div>
 
-      {/* Chat messages */}
-      <div className="max-h-72 overflow-y-auto px-4 py-3" style={{ minHeight: 120 }}>
+      <div className="max-h-72 overflow-y-auto px-5 py-4" style={{ minHeight: 120 }}>
         {messages.length === 0 && !isLoading && (
-          <p className="py-6 text-center text-sm text-slate-400">
-            Tap the microphone below and describe what happened. Your AI assistant will ask
-            follow-up questions.
+          <p className="py-6 text-center text-sm text-muted">
+            Use the microphone or type below to describe your symptoms. You may be asked follow-up
+            questions.
           </p>
         )}
 
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`mb-2 flex ${msg.role === "patient" ? "justify-end" : "justify-start"}`}
+            className={`mb-3 flex ${msg.role === "patient" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-relaxed ${
                 msg.role === "patient"
-                  ? "rounded-br-md bg-blue-600 text-white"
-                  : "rounded-bl-md bg-slate-100 text-slate-800"
+                  ? "bg-neutral-100 text-ink"
+                  : "border border-neutral-200 bg-surface text-ink"
               }`}
             >
               {msg.content}
@@ -206,32 +201,24 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
           </div>
         ))}
 
-        {/* Loading indicator */}
         {isLoading && (
           <div className="mb-2 flex justify-start">
-            <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3">
-              <div className="flex gap-1">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "0ms" }} />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "150ms" }} />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "300ms" }} />
-              </div>
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-muted">
+              …
             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      {/* Error */}
       {error && (
-        <p className="mx-4 mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+        <p className="mx-5 mb-2 rounded-lg border border-attention/30 bg-attention/5 px-4 py-2 text-sm text-attention">
           {error}
         </p>
       )}
 
-      {/* Input area */}
-      <div className="border-t border-blue-100 px-4 py-3">
+      <div className="border-t border-neutral-200 px-5 py-4">
         {showTextInput ? (
-          /* Text input mode */
           <div className="flex gap-2">
             <input
               type="text"
@@ -240,28 +227,25 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendText()}
               placeholder="Type your message…"
               disabled={isLoading}
-              className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400 disabled:opacity-50"
+              className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 disabled:opacity-50"
             />
             <button
               type="button"
               onClick={handleSendText}
               disabled={isLoading || !textDraft.trim()}
-              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white active:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-sage px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
             >
               Send
             </button>
           </div>
         ) : (
-          /* Mic button mode */
           <div className="flex flex-col items-center gap-2">
             <button
               type="button"
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isLoading}
-              className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-all active:scale-95 disabled:opacity-50 ${
-                isRecording
-                  ? "animate-pulse bg-red-500"
-                  : "bg-blue-600 hover:bg-blue-700"
+              className={`flex h-14 w-14 items-center justify-center rounded-full text-white disabled:opacity-50 ${
+                isRecording ? "bg-clay" : "bg-sage"
               }`}
               aria-label={isRecording ? "Stop recording" : "Start recording"}
             >
@@ -281,12 +265,12 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
               )}
             </button>
             {isRecording && (
-              <p className="text-sm font-medium text-red-600">
+              <p className="text-sm font-medium text-clay">
                 Recording… {formatTime(recordingTime)}
               </p>
             )}
             {!isRecording && (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 {messages.length === 0
                   ? "Tap to start talking"
                   : "Tap to add more details"}
@@ -295,11 +279,10 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
           </div>
         )}
 
-        {/* Toggle between mic and text */}
         <button
           type="button"
           onClick={() => setShowTextInput(!showTextInput)}
-          className="mt-2 w-full text-center text-xs text-blue-500 hover:underline"
+          className="mt-3 w-full text-center text-xs text-sage"
         >
           {showTextInput ? "Use microphone instead" : "Type instead"}
         </button>

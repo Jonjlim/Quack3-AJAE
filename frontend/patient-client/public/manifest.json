@@ -1,11 +1,11 @@
 {
   "name": "ER-OVERWATCH Patient Portal",
   "short_name": "ER-OVERWATCH",
-  "description": "Zero-install ER waiting room intake and queue status",
+  "description": "ER waiting room queue status and check-in",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#f4f4f2",
+  "theme_color": "#4a6b5d",
   "icons": [
     {
       "src": "/icon.svg",
