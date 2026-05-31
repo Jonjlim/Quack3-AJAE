@@ -31,11 +31,11 @@ from app.deps.auth import require_firebase_user
 from app.firebase_app import FirebaseUser
 from app.services.events import EventBus
 from app.services.fall_alerts import build_fall_message, should_accept_fall_report
-from app.services.scene_fall_bridge import SceneFallUnavailableError, run_sequence_analysis
+from app.services.scene_fall_bridge import SceneFallUnavailableError, run_fall_analysis, run_sequence_analysis
 from app.services.snapshot_store import snapshot_store
 from app.services.state import state_service
 from app.ws.manager import manager
-from shared.schemas.telemetry import SnapshotFallAnalysisResponse
+from shared.schemas.telemetry import ClipFallAnalysisResponse, SnapshotFallAnalysisResponse
 
 router = APIRouter(prefix="/api/v1", tags=["scene-fall"])
 events = EventBus(manager, state_service)
@@ -126,6 +126,65 @@ async def analyze_snapshot(
         danger_level=danger_level,
         coordinates=result.get("coordinates"),
         description=result.get("description"),
+        alert=alert,
+        broadcast=broadcast,
+    )
+
+
+@router.post("/alerts/analyze-video", response_model=ClipFallAnalysisResponse)
+async def analyze_video(
+    video: Annotated[UploadFile, File(description="Short video clip (webm/mp4) from room camera")],
+    room_name: Annotated[str | None, Form()] = None,
+    patient_id: Annotated[str | None, Form()] = None,
+    mime_type: Annotated[str, Form()] = "video/webm",
+    _user: FirebaseUser = Depends(require_firebase_user),
+) -> ClipFallAnalysisResponse:
+    """Receive a short video clip and run Gemini video fall analysis.
+
+    The frontend records ~5 seconds of camera footage via MediaRecorder
+    and POSTs it here every 2 seconds.  Gemini analyses the clip as native
+    video rather than sampled still frames.
+    """
+    video_bytes = await video.read()
+    if not video_bytes:
+        raise HTTPException(status_code=400, detail="Empty video clip")
+
+    room_key = (room_name or "default").strip()
+
+    try:
+        result = await asyncio.to_thread(run_fall_analysis, video_bytes, mime_type)
+    except SceneFallUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    fall_detected: bool = bool(result.get("fall_detected", False))
+    confidence: float = float(result.get("confidence", 0.0))
+    danger_level: str = result.get("danger_level", "low")
+
+    alert = None
+    broadcast = False
+
+    if (
+        fall_detected
+        and should_accept_fall_report(confidence, danger_level)
+        and _can_broadcast_alert(room_key)
+    ):
+        location = f" in {room_name}" if room_name else ""
+        message = build_fall_message(
+            confidence,
+            danger_level,
+            result.get("coordinates"),
+            f"AI-detected fall{location} (video)",
+        )
+        alert = state_service.create_fall_alert(message, patient_id=patient_id)
+        await events.alert(alert)
+        broadcast = True
+
+    return ClipFallAnalysisResponse(
+        fall_detected=fall_detected,
+        confidence=confidence,
+        danger_level=danger_level,
+        coordinates=result.get("coordinates"),
+        frame_timestamp=result.get("frame_timestamp"),
         alert=alert,
         broadcast=broadcast,
     )

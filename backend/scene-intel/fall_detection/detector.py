@@ -8,13 +8,14 @@ from generalFunctions.GeminiAPI import query_gemini_images, query_gemini_video
 
 _PROMPT_VIDEO = """You are a hospital urgent care fall detection system analyzing a video clip from a monitoring camera.
 
-Analyze the video for anyone that might've fallen unconscious. Evaluate:
-1. Whether a fall occurred
-2. Whether anyone in the frame fell unconscious
+Analyze the video for anyone that might've fallen unconscious or slumped down (indicating poor health). Ensure that you dont get false positives from poor posture/people bending 
+Evaluate:
+1. Whether a fall or slump occurred
+2. Whether anyone in the frame fell unconscious or slumped
 3. Your confidence level (0.0 to 1.0)
 4. The danger level: "low", "medium", or "high"
-5. If someone is determined to have fallen unconscious, the approximate pixel coordinates (x, y) of the center of that person.
-6. If someone is determined to have fallen unconscious, the approximate timestamp in seconds within the clip.
+5. If someone is determined to have fallen unconscious or slumped, the approximate pixel coordinates (x, y) of the center of that person.
+6. If someone is determined to have fallen unconscious or slumped, the approximate timestamp in seconds within the clip.
 
 Respond with ONLY valid JSON in this exact format, no other text:
 {
