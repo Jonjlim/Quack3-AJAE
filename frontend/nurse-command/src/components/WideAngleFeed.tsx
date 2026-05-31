@@ -21,22 +21,18 @@ function FeedStatusBadge({
 }) {
   if (connecting) {
     return (
-      <span
-        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-        style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid rgba(217,119,6,0.25)" }}
-      >
-        Connecting…
+      <span className="border border-amber-600 bg-amber-50 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-amber-700">
+        Connecting
       </span>
     );
   }
   return (
     <span
-      className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-      style={
+      className={`border px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest ${
         connected
-          ? { background: "rgba(22,163,74,0.10)", color: "#15803d", border: "1px solid rgba(22,163,74,0.20)" }
-          : { background: "rgba(0,0,0,0.05)", color: "var(--text-muted)", border: "1px solid rgba(0,0,0,0.08)" }
-      }
+          ? "border-[var(--status-stable)] text-[var(--status-stable)]"
+          : "border-[var(--border)] text-[var(--text-dim)]"
+      }`}
     >
       {connected ? "● Live" : "Offline"}
     </span>
@@ -64,27 +60,14 @@ export function WideAngleFeed({
         : "grid-cols-2 lg:grid-cols-3";
 
   return (
-    <section
-      className="flex h-full min-h-0 flex-col"
-      style={{
-        background: "#ffffff",
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
-        borderRadius: "24px",
-      }}
-    >
-      <header
-        className="flex flex-shrink-0 items-center justify-between px-4 py-4"
-        style={{ borderBottom: "1px solid #e2e8f0" }}
-      >
-        <div className="flex items-center gap-3">
-          <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>
-            Room cameras
-          </h2>
+    <section className="panel flex h-full min-h-0 flex-col">
+      <header className="panel-header flex flex-shrink-0 items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="telemetry-label text-[var(--text)]">Optical Sensors</h2>
           <FeedStatusBadge connected={connected} connecting={connecting} />
           {roomVideos.length > 0 && (
-            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-              {roomVideos.length} live
+            <span className="telemetry-value text-[9px] text-[var(--text-dim)]">
+              {roomVideos.length} CH
             </span>
           )}
         </div>
@@ -92,37 +75,29 @@ export function WideAngleFeed({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80"
-            style={{
-              background: "#f1f5f9",
-              color: "var(--text)",
-              border: "1px solid #e2e8f0",
-            }}
+            className="border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[var(--text)] hover:bg-[var(--surface)]"
           >
             Retry
           </button>
         )}
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
-        <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl"
-          style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
-        >
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-1">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-[var(--border)] bg-black">
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
             {connected && roomVideos.length > 0 ? (
               <div
-                className={`grid h-full w-full max-h-full gap-2 ${roomGridClass} items-center justify-items-center`}
+                className={`grid h-full w-full max-h-full gap-px bg-[var(--border)] ${roomGridClass} items-center justify-items-center`}
               >
                 {roomVideos.map((video) => (
                   <div
                     key={video.identity}
-                    className="flex h-full max-h-full w-full min-h-0 items-center justify-center"
+                    className="flex h-full max-h-full w-full min-h-0 items-center justify-center bg-black"
                   >
                     <RemoteVideo
                       feedRole="room"
                       track={video.mediaStreamTrack}
-                      className="max-h-full w-full max-w-full rounded-xl"
+                      className="max-h-full w-full max-w-full"
                       label={videoLabels[video.identity] ?? video.identity}
                       enableCV
                     />
@@ -130,20 +105,19 @@ export function WideAngleFeed({
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-                <svg width="40" height="40" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.2 }}>
-                  <circle cx="24" cy="24" r="20" stroke="var(--accent)" strokeWidth="1.5" />
-                  <circle cx="24" cy="24" r="5" stroke="var(--accent)" strokeWidth="1.5" />
-                </svg>
-                <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              <div className="flex flex-col items-center justify-center gap-1.5 py-4 text-center">
+                <div className="border border-[var(--border)] px-3 py-2">
+                  <p className="telemetry-label text-[var(--text-dim)]">No Signal</p>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)]">
                   {connecting
-                    ? "Connecting to LiveKit…"
+                    ? "Establishing LiveKit link…"
                     : connected
-                      ? "Waiting for room cameras — open /camera on a device"
-                      : "Room feed offline"}
+                      ? "Awaiting room camera — open /camera on device"
+                      : "Feed offline"}
                 </p>
-                <p className="text-[10px]" style={{ color: "var(--text-dim)" }}>
-                  Patient cameras appear on each patient card and in their detail view
+                <p className="text-[9px] uppercase tracking-widest text-[var(--text-dim)]">
+                  Patient feeds on queue cards
                 </p>
               </div>
             )}
@@ -151,7 +125,7 @@ export function WideAngleFeed({
         </div>
 
         {error && (
-          <p className="mt-2 flex-shrink-0 text-xs font-medium" style={{ color: "var(--critical)" }} role="alert">
+          <p className="mt-1 flex-shrink-0 text-[10px] font-medium text-[var(--status-critical)]" role="alert">
             {error}
           </p>
         )}
