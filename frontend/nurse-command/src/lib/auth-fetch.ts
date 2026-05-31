@@ -1,6 +1,17 @@
 import { getIdToken, isFirebaseAuthEnabled } from "./firebase";
+import { getApiBase, getWsBase } from "./api-base";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+/** Extract a human-readable message from a FastAPI error response. */
+export async function readApiError(response: Response): Promise<string> {
+  const text = await response.text();
+  try {
+    const body = JSON.parse(text) as { detail?: string };
+    if (typeof body.detail === "string") return body.detail;
+  } catch {
+    // not JSON
+  }
+  return text.trim() || `Request failed (${response.status})`;
+}
 
 export async function authFetch(
   input: RequestInfo | URL,
@@ -17,7 +28,7 @@ export async function authFetch(
 }
 
 export async function wsUrlWithToken(path: string): Promise<string> {
-  const base = `${API_BASE.replace(/^http/, "ws")}${path}`;
+  const base = `${getWsBase()}${path}`;
   if (!isFirebaseAuthEnabled()) return base;
   const token = await getIdToken();
   if (!token) return base;
@@ -27,7 +38,7 @@ export async function wsUrlWithToken(path: string): Promise<string> {
 
 export async function registerNurseSession(): Promise<void> {
   if (!isFirebaseAuthEnabled()) return;
-  const response = await authFetch(`${API_BASE}/api/v1/auth/register-nurse`, {
+  const response = await authFetch(`${getApiBase()}/api/v1/auth/register-nurse`, {
     method: "POST",
   });
   if (!response.ok) {

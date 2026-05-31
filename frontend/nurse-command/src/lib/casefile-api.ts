@@ -1,9 +1,9 @@
 /** API client for the nurse-side case-file report feature. */
 
 import { authFetch } from "./auth-fetch";
+import { getApiBase, isMockMode } from "./api-base";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const USE_MOCK = isMockMode();
 
 /** Fetch the markdown report for a patient. */
 export async function getReportMarkdown(patientId: string): Promise<string> {
@@ -13,7 +13,7 @@ export async function getReportMarkdown(patientId: string): Promise<string> {
   }
 
   const res = await authFetch(
-    `${API_BASE}/api/v1/casefile/${encodeURIComponent(patientId)}/report`,
+    `${getApiBase()}/api/v1/casefile/${encodeURIComponent(patientId)}/report`,
   );
   if (!res.ok) {
     if (res.status === 404) throw new Error("No conversation data for this patient yet.");
@@ -25,7 +25,7 @@ export async function getReportMarkdown(patientId: string): Promise<string> {
 
 /** Get the URL for downloading the PDF report. */
 export function getReportPdfUrl(patientId: string): string {
-  return `${API_BASE}/api/v1/casefile/${encodeURIComponent(patientId)}/report-pdf`;
+  return `${getApiBase()}/api/v1/casefile/${encodeURIComponent(patientId)}/report-pdf`;
 }
 
 /** Check if a patient has any conversation data. */
@@ -34,7 +34,7 @@ export async function hasConversation(patientId: string): Promise<boolean> {
 
   try {
     const res = await authFetch(
-      `${API_BASE}/api/v1/casefile/${encodeURIComponent(patientId)}/conversation`,
+      `${getApiBase()}/api/v1/casefile/${encodeURIComponent(patientId)}/conversation`,
     );
     if (!res.ok) return false;
     const data = await res.json();

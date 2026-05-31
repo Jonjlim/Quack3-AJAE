@@ -1,11 +1,11 @@
 import { ensurePatientSession, linkPatientSession } from "@/lib/auth-api";
 import { authFetch, wsUrlWithToken } from "@/lib/auth-fetch";
 import { ensureAnonymousAuth, isFirebaseAuthEnabled } from "@/lib/firebase";
-import { getApiBase, getWsBase } from "@/lib/api-base";
+import { getApiBase, getWsBase, isMockMode } from "@/lib/api-base";
 import { MOCK_QUEUE_STATUS } from "@/lib/mock-data";
 import type { QueueStatus, TelemetryEnvelope } from "@shared/types/telemetry";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+const USE_MOCK = isMockMode();
 
 /** Validates the patient exists and links Firebase session before opening queue. */
 export async function signInWithPatientId(patientId: string): Promise<QueueStatus> {
@@ -121,6 +121,4 @@ export async function setCameraEnabled(patientId: string, enabled: boolean): Pro
   }
 }
 
-export function isMockMode(): boolean {
-  return USE_MOCK;
-}
+export { isMockMode } from "@/lib/api-base";

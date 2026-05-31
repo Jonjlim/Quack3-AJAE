@@ -19,8 +19,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { authFetch } from "../lib/auth-fetch";
-
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { getApiBase } from "../lib/api-base";
 
 // ── Snapshot mode constants ─────────────────────────────────────────────────
 /** Pixels wide for the snapshot sent to Gemini (height scales with aspect ratio). */
@@ -119,7 +118,7 @@ function startSnapshotMode(
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  if (!ctx) return () => {};
+  if (!ctx) return () => { };
 
   let firstSent = false;
   let pending = false;
@@ -190,7 +189,7 @@ function startVideoMode(
     recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 800_000 });
   } catch {
     console.warn("[video-fall] MediaRecorder not supported for", mimeType);
-    return () => {};
+    return () => { };
   }
 
   // Collect chunks produced by the recorder (fires roughly once per second)

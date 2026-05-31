@@ -2,6 +2,7 @@ import type { AcuityLevel, PatientRecord } from "@shared/types/telemetry";
 import type { RemoteVideoTrack } from "../hooks/useLiveKitRoom";
 import { PatientCard } from "./PatientCard";
 
+// Base priority — sets the starting rank by clinical severity
 const ACUITY_BASE: Record<AcuityLevel, number> = {
   RESUSCITATION: 5000,
   EMERGENT: 4000,
@@ -10,6 +11,8 @@ const ACUITY_BASE: Record<AcuityLevel, number> = {
   NON_URGENT: 1000,
 };
 
+// Points earned per minute waiting — lower-acuity patients escalate faster
+// so a long-waiting NON_URGENT can eventually overtake a recently arrived URGENT
 const WAIT_RATE: Record<AcuityLevel, number> = {
   RESUSCITATION: 3,
   EMERGENT: 6,
@@ -32,8 +35,6 @@ interface PatientGridProps {
   onSelect: (patient: PatientRecord) => void;
   alertCountByPatient: Record<string, number>;
   getVideoForIdentity: (identity: string) => RemoteVideoTrack | null;
-  /** When true, omits outer panel wrapper (parent provides container). */
-  embedded?: boolean;
 }
 
 export function PatientGrid({
@@ -42,7 +43,6 @@ export function PatientGrid({
   onSelect,
   alertCountByPatient,
   getVideoForIdentity,
-  embedded = false,
 }: PatientGridProps) {
   const sorted = [...patients].sort(
     (a, b) =>
@@ -50,15 +50,24 @@ export function PatientGrid({
       priorityScore(a, alertCountByPatient[a.patient_id] ?? 0),
   );
 
-  const content = (
-    <>
-      <header className="panel-header flex-shrink-0">
-        <h2 className="telemetry-label text-[var(--text)]">Patient Queue</h2>
-        <p className="telemetry-value mt-0.5 text-[10px] text-[var(--text-muted)]">
-          {patients.length} active
-        </p>
+  return (
+    <aside
+      className="flex w-72 flex-shrink-0 flex-col"
+      style={{
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+        borderRadius: "24px",
+      }}
+    >
+      <header
+        className="px-4 py-4"
+        style={{ borderBottom: "1px solid #e2e8f0" }}
+      >
+        <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Patient Queue</h2>
+        <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>{patients.length} patients</p>
       </header>
-      <div className="min-h-0 flex-1 space-y-px overflow-y-auto bg-[var(--border-subtle)] p-px">
+      <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {sorted.map((patient) => (
           <PatientCard
             key={patient.patient_id}
@@ -70,12 +79,6 @@ export function PatientGrid({
           />
         ))}
       </div>
-    </>
+    </aside>
   );
-
-  if (embedded) {
-    return <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{content}</div>;
-  }
-
-  return <aside className="panel flex w-64 flex-shrink-0 flex-col">{content}</aside>;
 }

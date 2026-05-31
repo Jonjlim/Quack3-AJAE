@@ -1,10 +1,10 @@
 /** API client for the Gemini case-file chat feature. */
 
 import { authFetch } from "@/lib/auth-fetch";
-import { getApiBase } from "@/lib/api-base";
+import { getApiBase, isMockMode } from "@/lib/api-base";
 import type { CasefileChatResponse, CasefileMessage } from "@shared/types/telemetry";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+const USE_MOCK = isMockMode();
 
 async function parseError(res: Response): Promise<string> {
   try {

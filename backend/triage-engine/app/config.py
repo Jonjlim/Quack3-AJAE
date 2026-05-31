@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     firebase_credentials_path: str = ""
     firebase_credentials_json: str = ""
 
+    def livekit_is_configured(self) -> bool:
+        """True when real LiveKit Cloud credentials are set (not repo defaults)."""
+        if not self.livekit_api_key or not self.livekit_api_secret or not self.livekit_url:
+            return False
+        if self.livekit_api_key == "devkey" and self.livekit_api_secret == "secret":
+            return self.testing
+        if "your-project" in self.livekit_url:
+            return False
+        return True
+
     def resolved_firebase_credentials_path(self) -> Path | None:
         if not self.firebase_credentials_path:
             return None
