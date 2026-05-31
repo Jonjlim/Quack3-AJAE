@@ -57,7 +57,7 @@ export function PatientCard({
 
   const meta = ACUITY_META[patient.acuity] ?? ACUITY_META.NON_URGENT;
   const hrDisplay = formatHrDisplay(patient.last_biometric);
-  const showCamera = patient.camera_enabled;
+  const showCamera = patientVideo != null;
 
   return (
     <button
@@ -79,19 +79,11 @@ export function PatientCard({
             className="absolute right-3 top-2.5 h-14 w-[4.5rem] overflow-hidden rounded-lg"
             style={{ background: "#0f172a", border: "1px solid #e2e8f0" }}
           >
-            {patientVideo ? (
-              <RemoteVideo
-                track={patientVideo.mediaStreamTrack}
-                className="h-full w-full"
-                feedRole="thumbnail"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center px-1 text-center">
-                <span className="text-[9px] leading-tight" style={{ color: "#94a3b8" }}>
-                  No feed
-                </span>
-              </div>
-            )}
+            <RemoteVideo
+              track={patientVideo!.mediaStreamTrack}
+              className="h-full w-full"
+              feedRole="thumbnail"
+            />
           </div>
         )}
 

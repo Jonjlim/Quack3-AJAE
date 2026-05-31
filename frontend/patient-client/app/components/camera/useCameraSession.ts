@@ -27,7 +27,6 @@ export function useCameraSession({
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string>("Camera off");
   const [connecting, setConnecting] = useState(false);
-  const [samplingTrack, setSamplingTrack] = useState<MediaStreamTrack | null>(null);
   const roomRef = useRef<Room | null>(null);
   const videoTrackRef = useRef<LocalVideoTrack | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -49,25 +48,34 @@ export function useCameraSession({
 
   useRppgSampler({
     patientId,
-    track: samplingTrack,
+    videoRef,
     enabled,
     onSample: ({ reading, analysis }) => {
-      if (reading?.heart_rate_bpm != null && analysis.measurement_status !== "unreliable") {
-        setStatus(formatHrStatus(reading));
+      const hr = reading?.heart_rate_bpm ?? analysis.heart_rate_bpm;
+      if (hr != null && analysis.measurement_status !== "unreliable") {
+        const low = reading?.heart_rate_bpm_low ?? analysis.heart_rate_bpm_low;
+        const high = reading?.heart_rate_bpm_high ?? analysis.heart_rate_bpm_high;
+        if (low != null && high != null) {
+          setStatus(
+            formatHrStatus({
+              patient_id: patientId,
+              heart_rate_bpm: hr,
+              heart_rate_bpm_low: low,
+              heart_rate_bpm_high: high,
+              respiratory_rate_bpm: null,
+              confidence: reading?.confidence ?? analysis.confidence,
+              measurement_status: reading?.measurement_status ?? analysis.measurement_status,
+              source: "rppg",
+              recorded_at: reading?.recorded_at ?? new Date().toISOString(),
+            }),
+          );
+          return;
+        }
+        setStatus(`Streaming · HR ${Math.round(hr)} bpm`);
         return;
       }
       if (analysis.measurement_status === "unreliable" || analysis.error) {
         setStatus(`Streaming · ${analysis.error ?? "hold still, face the camera"}`);
-        return;
-      }
-      if (
-        analysis.heart_rate_bpm != null &&
-        analysis.heart_rate_bpm_low != null &&
-        analysis.heart_rate_bpm_high != null
-      ) {
-        setStatus(
-          `Streaming · HR ${Math.round(analysis.heart_rate_bpm)} bpm (${Math.round(analysis.heart_rate_bpm_low)}–${Math.round(analysis.heart_rate_bpm_high)}) · estimating`,
-        );
         return;
       }
       setStatus("Streaming · hold still · measuring vitals (~8s)");
@@ -79,6 +87,10 @@ export function useCameraSession({
       }
       if (message.includes("404")) {
         setStatus("Streaming · patient not found — re-submit intake");
+        return;
+      }
+      if (message.toLowerCase().includes("timed out")) {
+        setStatus("Streaming · vitals analysis slow — hold still and retry");
         return;
       }
       setStatus("Streaming · keep face visible for vitals");
@@ -107,7 +119,6 @@ export function useCameraSession({
     enabledRef.current = false;
     setEnabled(false);
     setConnecting(false);
-    setSamplingTrack(null);
     setStatus("Camera off");
     onCameraChangeRef.current?.(false);
   }, [patientId]);
@@ -154,7 +165,6 @@ export function useCameraSession({
       await setCameraEnabled(patientId, true);
       enabledRef.current = true;
       onCameraChangeRef.current?.(true);
-      setSamplingTrack(videoTrack.mediaStreamTrack);
       setEnabled(true);
       setConnecting(false);
       setStatus("Hold still · measuring vitals (~8s)");

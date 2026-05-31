@@ -14,7 +14,6 @@ import { MOCK_PATIENTS, MOCK_INITIAL_ALERTS } from "../mock/mockData";
 export interface CheckInData {
   complaint: string;
   acuity: AcuityLevel;
-  cameraOptIn: boolean;
   displayName?: string;
 }
 
@@ -263,7 +262,7 @@ export function useTriageSocket() {
         status: "WAITING",
         wait_minutes: 0,
         chief_complaint: data.complaint,
-        camera_enabled: data.cameraOptIn,
+        camera_enabled: false,
         triage_reasoning: null,
         last_biometric: null,
         created_at: new Date().toISOString(),
@@ -289,14 +288,6 @@ export function useTriageSocket() {
     const intake = (await response.json()) as IntakeResponse;
     const patient_id = intake.patient_id;
 
-    if (data.cameraOptIn) {
-      await authFetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patient_id)}/camera`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patient_id, enabled: true }),
-      });
-    }
-
     const newPatient: PatientRecord = {
       patient_id,
       display_name,
@@ -305,7 +296,7 @@ export function useTriageSocket() {
       status: "WAITING",
       wait_minutes: 0,
       chief_complaint: data.complaint,
-      camera_enabled: data.cameraOptIn,
+      camera_enabled: false,
       triage_reasoning: null,
       last_biometric: null,
       created_at: intake.created_at,

@@ -70,7 +70,6 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
   const [symptoms, setSymptoms] = useState<Set<Symptom>>(new Set());
   const [otherSymptom, setOtherSymptom] = useState("");
   const [otherSymptomSelected, setOtherSymptomSelected] = useState(false);
-  const [cameraOptIn, setCameraOptIn] = useState(false);
 
   const [errors, setErrors] = useState<{ complaint?: string; acuity?: string }>({});
   const [successCheckin, setSuccessCheckin] = useState<CheckInResult | null>(null);
@@ -144,7 +143,6 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
       const result = await onSubmit({
         complaint: complaintStr,
         acuity: acuity!,
-        cameraOptIn,
         displayName: name.trim() || undefined,
       });
 
@@ -157,7 +155,6 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
           complaint: complaintStr,
           symptoms: [...Array.from(symptoms), ...(otherSymptomSelected && otherSymptom.trim() ? [otherSymptom.trim()] : [])],
           triage_level: acuity,
-          camera_opted_in: cameraOptIn,
           checked_in: new Date().toISOString(),
           arrival_time: arrivalTime,
         },
@@ -184,7 +181,7 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
       setSelectedComplaints(new Set()); setOtherDetail("");
       setAcuity(null); setAcuityManual(false);
       setSymptoms(new Set()); setOtherSymptomSelected(false); setOtherSymptom("");
-      setCameraOptIn(false); setErrors({});
+      setErrors({});
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Check-in failed");
     } finally {
@@ -392,23 +389,7 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
         )}
       </div>
 
-      {/* Row 5 — camera monitoring */}
-      <div className="flex flex-shrink-0 items-center justify-between rounded-lg px-4 py-2.5"
-        style={{ background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div>
-          <p className="text-sm font-medium" style={{ color: "#1e293b" }}>Camera monitoring</p>
-          <p className="text-xs text-slate-500">Patient consents to remote biometric monitoring</p>
-        </div>
-        <button type="button" role="switch" aria-checked={cameraOptIn}
-          onClick={() => setCameraOptIn((v) => !v)}
-          className="relative h-6 w-11 flex-shrink-0 rounded-full transition-colors"
-          style={{ background: cameraOptIn ? "#2563eb" : "#e2e8f0" }}>
-          <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
-            style={{ left: cameraOptIn ? "calc(100% - 1.375rem)" : "2px" }} />
-        </button>
-      </div>
-
-      {/* Row 6 — AI monitoring config (always-visible, grows to fill remaining space) */}
+      {/* Row 5 — AI monitoring config (always-visible, grows to fill remaining space) */}
       <div className="flex min-h-0 flex-1 flex-col rounded-lg p-4"
         style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
         <div className="mb-3 flex items-center justify-between">
