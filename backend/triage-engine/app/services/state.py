@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from app.services import persistence
 from app.services.triage import (
     assign_queue_positions,
     bump_acuity,
@@ -68,6 +69,7 @@ class StateService:
     def add_patient(self, patient: PatientRecord) -> PatientRecord:
         self.patients.append(patient)
         self._recompute()
+        self._persist()
         return self.get_patient(patient.patient_id) or patient
 
     def remove_patient(self, patient_id: str) -> bool:
@@ -79,6 +81,7 @@ class StateService:
         self._hr_ema.pop(patient_id, None)
         self._last_bio_alert_at.pop(patient_id, None)
         self._recompute()
+        self._persist()
         return True
 
     def get_queue_status(self, patient_id: str) -> QueueStatus | None:
@@ -183,14 +186,19 @@ class StateService:
 
         return self.get_patient(reading.patient_id), alert
 
+    def _persist(self) -> None:
+        persistence.persist_state(self.patients, self.alerts)
+
     def _replace_patient(self, updated: PatientRecord) -> None:
         self.patients = [updated if p.patient_id == updated.patient_id else p for p in self.patients]
         self._recompute()
+        self._persist()
 
     def add_alert(self, alert: AlertEvent) -> AlertEvent:
         self.alerts.append(alert)
         if alert.patient_id:
             self.escalate_patient(alert.patient_id)
+        self._persist()
         return alert
 
     def acknowledge_alert(self, alert_id: str) -> AlertEvent | None:
@@ -228,6 +236,23 @@ class StateService:
         return self.create_fall_alert("Fall detected in waiting room sector B")
 
 
+from app.config import settings
 from app.mock_data import MOCK_PATIENTS
 
-state_service = StateService(seed_patients=MOCK_PATIENTS)
+# Configure SQLite path (defaults to data/triage.db inside the backend dir)
+_sqlite_path = settings.triage_sqlite_path or str(
+    (settings.model_config.get("env_file", "").replace(".env", "") or ".").rstrip("/")
+    + "/data/triage.db"
+)
+from pathlib import Path as _Path
+_sqlite_path = str(_Path(__file__).resolve().parents[2] / "data" / "triage.db")
+persistence.configure(_sqlite_path)
+
+# Load from SQLite if available, otherwise seed with mock patients
+_persisted = persistence.load_persisted_state()
+if _persisted:
+    _patients, _alerts = _persisted
+    state_service = StateService(seed_patients=_patients)
+    state_service.alerts = _alerts
+else:
+    state_service = StateService(seed_patients=MOCK_PATIENTS)

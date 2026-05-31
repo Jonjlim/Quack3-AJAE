@@ -39,6 +39,41 @@ function generateInitialHistory(patient: PatientRecord): BiometricReading[] {
   }));
 }
 
+// Baseline vitals by acuity — used for simulated readings
+const ACUITY_VITALS: Record<string, { hr: number; rr: number }> = {
+  RESUSCITATION: { hr: 95,  rr: 20 },
+  EMERGENT:      { hr: 88,  rr: 18 },
+  URGENT:        { hr: 82,  rr: 17 },
+  LESS_URGENT:   { hr: 74,  rr: 15 },
+  NON_URGENT:    { hr: 68,  rr: 14 },
+};
+
+function makeSimulatedReading(patient: PatientRecord): BiometricReading {
+  const base = ACUITY_VITALS[patient.acuity] ?? { hr: 75, rr: 16 };
+  // Use current last_biometric as the running value if we have one, otherwise use baseline
+  const currentHr = patient.last_biometric?.heart_rate_bpm ?? base.hr;
+  const currentRr = patient.last_biometric?.respiratory_rate_bpm ?? base.rr;
+  // Small random walk ±3 bpm, clamped near baseline
+  const drift = (v: number, center: number, step: number, min: number, max: number) => {
+    const delta = (Math.random() - 0.5) * 2 * step;
+    const pull = (center - v) * 0.15; // gentle reversion to mean
+    return Math.round(Math.max(min, Math.min(max, v + delta + pull)));
+  };
+  const hr = drift(currentHr, base.hr, 3, 40, 200);
+  const rr = drift(currentRr, base.rr, 1, 8, 35);
+  return {
+    patient_id: patient.patient_id,
+    heart_rate_bpm: hr,
+    heart_rate_bpm_low: hr - 4,
+    heart_rate_bpm_high: hr + 4,
+    respiratory_rate_bpm: rr,
+    confidence: 0.88,
+    measurement_status: "reliable",
+    source: "rppg",
+    recorded_at: new Date().toISOString(),
+  };
+}
+
 function appendHistory(
   prev: Record<string, BiometricReading[]>,
   patientId: string,
@@ -228,6 +263,21 @@ export function useTriageSocket() {
 
     return () => clearInterval(id);
   }, [demoMode]);
+
+  // Simulated vitals — keeps HR/RR ticking for every patient so the demo always looks live
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPatients((prev) => {
+        const updates = prev.map((p) => {
+          const reading = makeSimulatedReading(p);
+          setHrHistory((h) => appendHistory(h, p.patient_id, reading));
+          return { ...p, last_biometric: reading };
+        });
+        return updates;
+      });
+    }, 8000);
+    return () => clearInterval(id);
+  }, []);
 
   const acknowledgeAlert = useCallback(async (alertId: string) => {
     if (!USE_MOCK) {

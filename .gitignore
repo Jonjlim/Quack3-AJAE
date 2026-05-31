@@ -83,3 +83,8 @@ package-lock.json
 
 # Service logs
 logs/
+
+# SQLite persistence (runtime data, not committed)
+backend/triage-engine/data/
+*.sqlite
+*.db
