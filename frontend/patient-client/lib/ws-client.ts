@@ -1,4 +1,4 @@
-import { linkPatientSession } from "@/lib/auth-api";
+import { ensurePatientSession, linkPatientSession } from "@/lib/auth-api";
 import { authFetch, wsUrlWithToken } from "@/lib/auth-fetch";
 import { ensureAnonymousAuth, isFirebaseAuthEnabled } from "@/lib/firebase";
 import { getApiBase, getWsBase } from "@/lib/api-base";
@@ -27,9 +27,14 @@ export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
     return { ...MOCK_QUEUE_STATUS, patient_id: patientId };
   }
 
-  const response = await authFetch(
-    `${getApiBase()}/api/v1/queue/${encodeURIComponent(patientId)}`,
-  );
+  let response: Response;
+  try {
+    response = await authFetch(
+      `${getApiBase()}/api/v1/queue/${encodeURIComponent(patientId)}`,
+    );
+  } catch (err) {
+    throw new Error(friendlyFetchError(err, "Cannot load queue status."));
+  }
   if (response.status === 404) {
     throw new Error("Patient ID not found. Ask the nurse for your ID.");
   }
@@ -39,11 +44,21 @@ export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
   return response.json() as Promise<QueueStatus>;
 }
 
+function friendlyFetchError(err: unknown, fallback: string): string {
+  if (err instanceof TypeError && /fetch|network|failed/i.test(err.message)) {
+    return "Cannot reach the triage server. Make sure the backend is running on port 8000.";
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 export async function connectPatientSocket<T = Record<string, unknown>>(
   patientId: string,
   onMessage: (data: TelemetryEnvelope<T>) => void,
 ): Promise<WebSocket | null> {
   if (USE_MOCK) return null;
+
+  await ensurePatientSession(patientId);
 
   const url = await wsUrlWithToken(
     `${getWsBase()}/ws/patient/${encodeURIComponent(patientId)}`,
