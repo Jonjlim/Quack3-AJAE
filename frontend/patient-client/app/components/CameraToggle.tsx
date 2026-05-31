@@ -3,6 +3,7 @@
 import { getApiBase } from "@/lib/api-base";
 import type { LiveKitTokenResponse } from "@shared/types/telemetry";
 import { useRppgSampler } from "@/lib/useRppgSampler";
+import { setCameraEnabled } from "@/lib/ws-client";
 import {
   createLocalVideoTrack,
   Room,
@@ -37,10 +38,21 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
         return;
       }
       if (analysis.error) {
-        setStatus("Streaming · keep face visible for vitals");
+        setStatus(`Streaming · ${analysis.error}`);
         return;
       }
       setStatus("Streaming to triage nurse");
+    },
+    onError: (message) => {
+      if (message.includes("503") || message.toLowerCase().includes("dependencies")) {
+        setStatus("Streaming · vitals backend unavailable (install scene-intel deps)");
+        return;
+      }
+      if (message.includes("404")) {
+        setStatus("Streaming · patient not found — re-submit intake");
+        return;
+      }
+      setStatus("Streaming · keep face visible for vitals");
     },
   });
 
@@ -56,11 +68,18 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       await lkRoom.disconnect();
       roomRef.current = null;
     }
+    if (enabled) {
+      try {
+        await setCameraEnabled(patientId, false);
+      } catch {
+        // best-effort on stop
+      }
+    }
     setEnabled(false);
     setSamplingTrack(null);
     setStatus("Camera off");
     onCameraChange?.(false);
-  }, [onCameraChange]);
+  }, [enabled, onCameraChange, patientId]);
 
   useEffect(() => {
     return () => {
@@ -92,10 +111,12 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       const videoTrack = await createLocalVideoTrack({
         facingMode: "user",
         resolution: { width: 640, height: 480 },
+        frameRate: 30,
       });
       videoTrackRef.current = videoTrack;
       await lkRoom.localParticipant.publishTrack(videoTrack);
 
+      await setCameraEnabled(patientId, true);
       onCameraChange?.(true);
       setSamplingTrack(videoTrack.mediaStreamTrack);
       setEnabled(true);

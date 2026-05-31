@@ -69,11 +69,11 @@ async def analyze_rppg(
     patient = state_service.get_patient(patient_id)
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")
+
     if not patient.camera_enabled:
-        raise HTTPException(
-            status_code=403,
-            detail="Patient has not opted in to camera streaming",
-        )
+        patient = state_service.set_camera_enabled(patient_id, True)
+        if patient:
+            await events.patient_update(patient)
 
     if not video.content_type or not video.content_type.startswith("video/"):
         raise HTTPException(status_code=415, detail="Upload must be a video file")

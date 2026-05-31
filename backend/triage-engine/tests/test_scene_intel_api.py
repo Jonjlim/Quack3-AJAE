@@ -112,11 +112,22 @@ class TestSceneIntelRppg:
         assert response.status_code == 404
 
     @patch("app.routers.scene_intel.run_rppg_analysis")
-    def test_rppg_rejects_camera_opt_out(self, mock_run: MagicMock, client: TestClient) -> None:
+    def test_rppg_auto_enables_camera_when_opted_in_via_upload(
+        self, mock_run: MagicMock, client: TestClient
+    ) -> None:
+        mock_run.return_value = {
+            "heart_rate_bpm": 72.0,
+            "confidence": 0.8,
+            "signal_quality": "good",
+            "error": None,
+        }
         response = client.post(
             "/api/v1/scene-intel/rppg",
             data={"patient_id": "pat-001"},
-            files={"video": ("face.mp4", b"fake-video-bytes", "video/mp4")},
+            files={"video": ("face.webm", b"fake-video-bytes", "video/webm")},
         )
-        assert response.status_code == 403
-        mock_run.assert_not_called()
+        assert response.status_code == 200
+        parsed = SceneIntelRppgResponse.model_validate(response.json())
+        assert parsed.biometric is not None
+        patient = next(p for p in client.get("/api/v1/patients").json() if p["patient_id"] == "pat-001")
+        assert patient["camera_enabled"] is True
