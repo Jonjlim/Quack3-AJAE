@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiBase } from "@/lib/api-base";
 import type { LiveKitTokenResponse } from "@shared/types/telemetry";
 import {
   createLocalVideoTrack,
@@ -55,8 +56,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
 
     setStatus("Connecting…");
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const response = await fetch(`${apiBase}/api/v1/livekit/token`, {
+      const response = await fetch(`${getApiBase()}/api/v1/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ room: roomName, identity, role: "patient" }),

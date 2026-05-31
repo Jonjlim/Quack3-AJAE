@@ -1,3 +1,4 @@
+import { getApiBase, getWsBase } from "@/lib/api-base";
 import { MOCK_QUEUE_STATUS } from "@/lib/mock-data";
 import type {
   IntakeRequest,
@@ -7,11 +8,6 @@ import type {
 } from "@shared/types/telemetry";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-function wsBase(): string {
-  return API_BASE.replace(/^http/, "ws");
-}
 
 export async function submitIntake(data: IntakeRequest): Promise<IntakeResponse> {
   if (USE_MOCK) {
@@ -24,7 +20,7 @@ export async function submitIntake(data: IntakeRequest): Promise<IntakeResponse>
     };
   }
 
-  const response = await fetch(`${API_BASE}/api/v1/intake`, {
+  const response = await fetch(`${getApiBase()}/api/v1/intake`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -42,7 +38,7 @@ export async function getQueueStatus(patientId: string): Promise<QueueStatus> {
     return { ...MOCK_QUEUE_STATUS, patient_id: patientId };
   }
 
-  const response = await fetch(`${API_BASE}/api/v1/queue/${encodeURIComponent(patientId)}`);
+  const response = await fetch(`${getApiBase()}/api/v1/queue/${encodeURIComponent(patientId)}`);
   if (!response.ok) {
     throw new Error(`Queue status failed (${response.status})`);
   }
@@ -55,7 +51,7 @@ export function connectPatientSocket<T = Record<string, unknown>>(
 ): WebSocket | null {
   if (USE_MOCK) return null;
 
-  const ws = new WebSocket(`${wsBase()}/ws/patient/${encodeURIComponent(patientId)}`);
+  const ws = new WebSocket(`${getWsBase()}/ws/patient/${encodeURIComponent(patientId)}`);
 
   ws.onmessage = (event) => {
     try {
