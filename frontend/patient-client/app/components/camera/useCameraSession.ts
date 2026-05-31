@@ -13,15 +13,20 @@ import {
 } from "livekit-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-interface CameraToggleProps {
+export interface UseCameraSessionOptions {
   patientId: string;
   room?: string;
   onCameraChange?: (enabled: boolean) => void;
 }
 
-export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChange }: CameraToggleProps) {
+export function useCameraSession({
+  patientId,
+  room = "er-waiting-room",
+  onCameraChange,
+}: UseCameraSessionOptions) {
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string>("Camera off");
+  const [connecting, setConnecting] = useState(false);
   const [samplingTrack, setSamplingTrack] = useState<MediaStreamTrack | null>(null);
   const roomRef = useRef<Room | null>(null);
   const videoTrackRef = useRef<LocalVideoTrack | null>(null);
@@ -55,7 +60,11 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
         setStatus(`Streaming · ${analysis.error ?? "hold still, face the camera"}`);
         return;
       }
-      if (analysis.heart_rate_bpm != null && analysis.heart_rate_bpm_low != null && analysis.heart_rate_bpm_high != null) {
+      if (
+        analysis.heart_rate_bpm != null &&
+        analysis.heart_rate_bpm_low != null &&
+        analysis.heart_rate_bpm_high != null
+      ) {
         setStatus(
           `Streaming · HR ${Math.round(analysis.heart_rate_bpm)} bpm (${Math.round(analysis.heart_rate_bpm_low)}–${Math.round(analysis.heart_rate_bpm_high)}) · estimating`,
         );
@@ -97,12 +106,12 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
     }
     enabledRef.current = false;
     setEnabled(false);
+    setConnecting(false);
     setSamplingTrack(null);
     setStatus("Camera off");
     onCameraChangeRef.current?.(false);
   }, [patientId]);
 
-  // Tear down only on unmount — not when parent re-renders (queue WS updates).
   useEffect(() => {
     return () => {
       void stopStream();
@@ -116,6 +125,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       return;
     }
 
+    setConnecting(true);
     setStatus("Connecting…");
     try {
       assertCameraAvailable();
@@ -146,6 +156,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       onCameraChangeRef.current?.(true);
       setSamplingTrack(videoTrack.mediaStreamTrack);
       setEnabled(true);
+      setConnecting(false);
       setStatus("Hold still · measuring vitals (~8s)");
 
       requestAnimationFrame(() => {
@@ -156,6 +167,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
     } catch (err) {
       await stopStream();
       onCameraChangeRef.current?.(false);
+      setConnecting(false);
       const message = err instanceof Error ? err.message : "Unknown error";
       if (message.toLowerCase().includes("permission") || message.includes("NotAllowed")) {
         setStatus("Camera permission denied — allow access in browser settings");
@@ -169,34 +181,12 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
     }
   }, [enabled, identity, patientId, roomName, stopStream]);
 
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">Remote Evaluation</h3>
-      <p className="mt-1 text-sm text-slate-500">
-        Share your camera so a nurse can assess you while you wait. Heart rate is
-        estimated periodically from your video while the camera is on.
-      </p>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`mt-4 aspect-video w-full rounded-xl bg-slate-900 object-cover ${
-          enabled ? "block" : "hidden"
-        }`}
-      />
-      <p className="mt-3 text-sm font-medium text-slate-700">{status}</p>
-      <button
-        type="button"
-        onClick={toggleCamera}
-        className={`mt-4 w-full rounded-xl px-6 py-5 text-lg font-semibold ${
-          enabled
-            ? "bg-red-600 text-white active:bg-red-700"
-            : "bg-emerald-600 text-white active:bg-emerald-700"
-        }`}
-      >
-        {enabled ? "Stop Camera" : "Start Camera"}
-      </button>
-    </div>
-  );
+  return {
+    enabled,
+    connecting,
+    status,
+    videoRef,
+    toggleCamera,
+    stopStream,
+  };
 }

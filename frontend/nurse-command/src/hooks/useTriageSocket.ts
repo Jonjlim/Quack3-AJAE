@@ -7,7 +7,8 @@ import type {
   PatientRecord,
   TelemetryEnvelope,
 } from "@shared/types/telemetry";
-import { authFetch, wsUrlWithToken } from "../lib/auth-fetch";
+import { authFetch, registerNurseSession, wsUrlWithToken } from "../lib/auth-fetch";
+import { isFirebaseAuthEnabled } from "../lib/firebase";
 import { MOCK_PATIENTS, MOCK_INITIAL_ALERTS } from "../mock/mockData";
 
 export interface CheckInData {
@@ -55,6 +56,7 @@ export function useTriageSocket() {
   const [patients, setPatients] = useState<PatientRecord[]>(rawPatients);
   const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>(MOCK_INITIAL_ALERTS);
   const [connected, setConnected] = useState(false);
+  const [telemetryError, setTelemetryError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
   const [latestBiometric, setLatestBiometric] = useState<BiometricReading | null>(null);
   const [hrHistory, setHrHistory] = useState<Record<string, BiometricReading[]>>(() => {
@@ -67,6 +69,27 @@ export function useTriageSocket() {
   const [demoMode, setDemoMode] = useState(false);
   const demoStepRef = useRef(0);
 
+  const refreshPatients = useCallback(async () => {
+    try {
+      const response = await authFetch(`${API_BASE}/api/v1/patients`);
+      if (!response.ok) {
+        throw new Error(`Patients API returned ${response.status}`);
+      }
+      const list = (await response.json()) as PatientRecord[];
+      setPatients(list);
+      setTelemetryError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not load patients";
+      setTelemetryError(message);
+    }
+  }, []);
+
+  // REST bootstrap (works even if WebSocket is down)
+  useEffect(() => {
+    if (USE_MOCK) return;
+    void refreshPatients();
+  }, [refreshPatients]);
+
   // Live WebSocket
   useEffect(() => {
     if (USE_MOCK) return;
@@ -74,40 +97,73 @@ export function useTriageSocket() {
     let ws: WebSocket | null = null;
     let cancelled = false;
 
-    void wsUrlWithToken("/ws/nurse").then((url) => {
-      if (cancelled) return;
-      ws = new WebSocket(url);
-      ws.onopen = () => setConnected(true);
-      ws.onclose = () => setConnected(false);
-      ws.onmessage = (event) => {
+    void (async () => {
       try {
-        const envelope = JSON.parse(event.data as string) as TelemetryEnvelope;
-        if (envelope.type === "PATIENTS_SNAPSHOT") {
-          const payload = envelope.payload as unknown as { patients: PatientRecord[] };
-          setPatients(payload.patients);
-        } else if (envelope.type === "PATIENT_UPDATE") {
-          const updated = envelope.payload as unknown as PatientRecord;
-          setPatients((prev) =>
-            prev.map((p) => (p.patient_id === updated.patient_id ? updated : p)),
-          );
-        } else if (envelope.type === "ALERT") {
-          const alert = envelope.payload as unknown as AlertEvent;
-          setActiveAlerts((prev) => [alert, ...prev.filter((a) => a.alert_id !== alert.alert_id)]);
-        } else if (envelope.type === "BIOMETRIC") {
-          const reading = envelope.payload as unknown as BiometricReading;
-          setLatestBiometric(reading);
-          setHrHistory((prev) => appendHistory(prev, reading.patient_id, reading));
-          setPatients((prev) =>
-            prev.map((p) =>
-              p.patient_id === reading.patient_id ? { ...p, last_biometric: reading } : p,
-            ),
-          );
+        if (isFirebaseAuthEnabled()) {
+          await registerNurseSession();
         }
-      } catch {
-        // ignore malformed messages
+        if (cancelled) return;
+        const url = await wsUrlWithToken("/ws/nurse");
+        if (cancelled) return;
+        ws = new WebSocket(url);
+        ws.onopen = () => {
+          setConnected(true);
+          setTelemetryError(null);
+        };
+        ws.onclose = (ev) => {
+          setConnected(false);
+          if (!cancelled && ev.code !== 1000) {
+            const hint =
+              ev.code === 1008 && isFirebaseAuthEnabled()
+                ? "Telemetry auth failed — sign in again or align Firebase env vars"
+                : `Telemetry disconnected (code ${ev.code})`;
+            setTelemetryError(hint);
+          }
+        };
+        ws.onerror = () => {
+          if (!cancelled) {
+            setTelemetryError("Telemetry connection error — is triage-engine running on :8000?");
+          }
+        };
+        ws.onmessage = (event) => {
+          try {
+            const envelope = JSON.parse(event.data as string) as TelemetryEnvelope;
+            if (envelope.type === "PATIENTS_SNAPSHOT") {
+              const payload = envelope.payload as unknown as { patients: PatientRecord[] };
+              setPatients(payload.patients);
+            } else if (envelope.type === "PATIENT_UPDATE") {
+              const updated = envelope.payload as unknown as PatientRecord;
+              setPatients((prev) =>
+                prev.map((p) => (p.patient_id === updated.patient_id ? updated : p)),
+              );
+            } else if (envelope.type === "ALERT") {
+              const alert = envelope.payload as unknown as AlertEvent;
+              setActiveAlerts((prev) => [
+                alert,
+                ...prev.filter((a) => a.alert_id !== alert.alert_id),
+              ]);
+            } else if (envelope.type === "BIOMETRIC") {
+              const reading = envelope.payload as unknown as BiometricReading;
+              setLatestBiometric(reading);
+              setHrHistory((prev) => appendHistory(prev, reading.patient_id, reading));
+              setPatients((prev) =>
+                prev.map((p) =>
+                  p.patient_id === reading.patient_id ? { ...p, last_biometric: reading } : p,
+                ),
+              );
+            }
+          } catch {
+            // ignore malformed messages
+          }
+        };
+      } catch (err) {
+        setConnected(false);
+        const message = err instanceof Error ? err.message : "Telemetry connection failed";
+        setTelemetryError(
+          `${message} — run bash start-all.sh and ensure VITE_API_URL=http://localhost:8000`,
+        );
       }
-      };
-    });
+    })();
 
     return () => {
       cancelled = true;
@@ -196,6 +252,7 @@ export function useTriageSocket() {
         wait_minutes: 0,
         chief_complaint: data.complaint,
         camera_enabled: data.cameraOptIn,
+        triage_reasoning: null,
         last_biometric: null,
         created_at: new Date().toISOString(),
       };
@@ -237,6 +294,7 @@ export function useTriageSocket() {
       wait_minutes: 0,
       chief_complaint: data.complaint,
       camera_enabled: data.cameraOptIn,
+      triage_reasoning: null,
       last_biometric: null,
       created_at: intake.created_at,
     };
@@ -258,6 +316,7 @@ export function useTriageSocket() {
     patients,
     activeAlerts,
     connected,
+    telemetryError,
     isMock: USE_MOCK,
     acknowledgeAlert,
     selectedPatient,

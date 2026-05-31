@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ER-OVERWATCH Patient Portal",
-  description: "Zero-install ER waiting room intake and queue status",
+  description: "ER waiting room queue status and check-in",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -15,16 +22,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#2563eb",
+  themeColor: "#4a6b5d",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={dmSans.variable}>
       <head>
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

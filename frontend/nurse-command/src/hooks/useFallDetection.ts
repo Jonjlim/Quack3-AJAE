@@ -1,9 +1,6 @@
-import type { BrowserFallReportRequest } from "@shared/types/telemetry";
 import { useEffect, useRef, useState } from "react";
-import { authFetch } from "../lib/auth-fetch";
 import { createBrowserFallDetector } from "../lib/browserFallDetector";
-
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { reportBrowserFall } from "../lib/report-browser-fall";
 
 /**
  * Runs MediaPipe pose-based fall detection on the given camera stream.
@@ -16,6 +13,7 @@ export function useFallDetection(
   stream: MediaStream | null,
   enabled: boolean,
   canvasRef?: React.RefObject<HTMLCanvasElement | null>,
+  roomName?: string | null,
 ): { cvReady: boolean } {
   const cleanupRef = useRef<(() => void) | null>(null);
   const [cvReady, setCvReady] = useState(false);
@@ -32,23 +30,23 @@ export function useFallDetection(
     const { cleanup, ready } = createBrowserFallDetector(
       stream,
       async (event) => {
-        const body: BrowserFallReportRequest = {
-          confidence: event.confidence,
-          danger_level: event.danger_level,
-          coordinates: event.coordinates ?? null,
-          frame_timestamp: event.frame_timestamp ?? null,
-          source: "browser",
-        };
-
-        try {
-          await authFetch(`${API_BASE}/api/v1/alerts/fall-report`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-        } catch {
-          // Nurse dashboard still receives alerts when report succeeds; ignore transient errors
-        }
+        const label = roomName?.trim();
+        await reportBrowserFall(
+          {
+            confidence: event.confidence,
+            danger_level: event.danger_level,
+            coordinates: event.coordinates ?? null,
+            frame_timestamp: event.frame_timestamp ?? null,
+            message: label
+              ? event.phase === "collapsed"
+                ? `Possible unconscious person in ${label}`
+                : `Person falling in ${label}`
+              : event.phase === "collapsed"
+                ? "Possible unconscious person detected"
+                : "Person falling detected",
+          },
+          label ? `room-cam:${label}` : "room-camera-device",
+        );
       },
       canvasRef?.current,
     );
@@ -63,7 +61,7 @@ export function useFallDetection(
       }
       setCvReady(false);
     };
-  }, [enabled, stream, canvasRef]);
+  }, [enabled, stream, canvasRef, roomName]);
 
   return { cvReady };
 }

@@ -24,13 +24,19 @@ from shared.schemas.telemetry import (
 class StateService:
     """Live triage state — in-memory with full queue recomputation on every mutation."""
 
-    _HR_BUFFER_SIZE = 3
+    _HR_BUFFER_SIZE = 8
+    _HR_EMA_ALPHA = 0.28
+    _MAX_HR_STEP_BPM = 15
+    _MIN_SAMPLES_FOR_ALERT = 4
+    _ALERT_COOLDOWN_SECONDS = 120
 
     def __init__(self, seed_patients: list[PatientRecord] | None = None) -> None:
         self.patients: list[PatientRecord] = list(seed_patients or [])
         self.alerts: list[AlertEvent] = []
         self.acuity_load: AcuityLoad = compute_acuity_load(self.patients)
         self._hr_buffer: dict[str, list[float]] = {}
+        self._hr_ema: dict[str, float] = {}
+        self._last_bio_alert_at: dict[str, datetime] = {}
         if self.patients:
             self._recompute()
 
@@ -105,15 +111,35 @@ class StateService:
         return self.get_patient(patient_id)
 
     def _smooth_hr(self, patient_id: str, hr: float) -> float:
+        """EMA with per-sample spike damping — keeps demo vitals stable under noisy rPPG."""
+        ema = self._hr_ema.get(patient_id)
+        if ema is None:
+            self._hr_ema[patient_id] = hr
+            self._hr_buffer.setdefault(patient_id, []).append(hr)
+            return hr
+
+        delta = hr - ema
+        if abs(delta) > self._MAX_HR_STEP_BPM:
+            hr = ema + (self._MAX_HR_STEP_BPM if delta > 0 else -self._MAX_HR_STEP_BPM)
+
+        ema = self._HR_EMA_ALPHA * hr + (1 - self._HR_EMA_ALPHA) * ema
+        self._hr_ema[patient_id] = ema
+
         buffer = self._hr_buffer.setdefault(patient_id, [])
-        buffer.append(hr)
+        buffer.append(ema)
         if len(buffer) > self._HR_BUFFER_SIZE:
             buffer.pop(0)
-        sorted_vals = sorted(buffer)
-        mid = len(sorted_vals) // 2
-        if len(sorted_vals) % 2 == 1:
-            return sorted_vals[mid]
-        return (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
+
+        return round(ema, 1)
+
+    def _can_raise_bio_alert(self, patient_id: str) -> bool:
+        if len(self._hr_buffer.get(patient_id, [])) < self._MIN_SAMPLES_FOR_ALERT:
+            return False
+        last_alert = self._last_bio_alert_at.get(patient_id)
+        if last_alert is None:
+            return True
+        elapsed = (datetime.now(timezone.utc) - last_alert).total_seconds()
+        return elapsed >= self._ALERT_COOLDOWN_SECONDS
 
     def apply_biometric(self, reading: BiometricReading) -> tuple[PatientRecord | None, AlertEvent | None]:
         patient = self.get_patient(reading.patient_id)
@@ -130,7 +156,7 @@ class StateService:
         self._replace_patient(updated)
 
         alert: AlertEvent | None = None
-        if is_biometric_critical(smoothed, previous):
+        if self._can_raise_bio_alert(reading.patient_id) and is_biometric_critical(smoothed, previous):
             self.escalate_patient(reading.patient_id)
             alert = AlertEvent(
                 alert_id=f"alert-bio-{reading.patient_id}-{int(datetime.now(timezone.utc).timestamp())}",
@@ -142,6 +168,7 @@ class StateService:
                 created_at=datetime.now(timezone.utc),
             )
             self.alerts.append(alert)
+            self._last_bio_alert_at[reading.patient_id] = alert.created_at
 
         return self.get_patient(reading.patient_id), alert
 

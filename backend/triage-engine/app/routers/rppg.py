@@ -56,7 +56,7 @@ async def analyze_rppg(
     should_broadcast = (
         analysis.heart_rate_bpm is not None
         and analysis.measurement_status != "unreliable"
-        and analysis.confidence >= 0.5
+        and analysis.confidence >= 0.55
     )
 
     if should_broadcast:

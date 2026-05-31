@@ -10,8 +10,12 @@ const isBroadCameraRoute =
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <NurseAuthGate>
-      {isBroadCameraRoute ? <BroadCameraPage /> : <App />}
-    </NurseAuthGate>
+    {isBroadCameraRoute ? (
+      <BroadCameraPage />
+    ) : (
+      <NurseAuthGate>
+        <App />
+      </NurseAuthGate>
+    )}
   </StrictMode>,
 );

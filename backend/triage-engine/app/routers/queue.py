@@ -89,7 +89,7 @@ async def acknowledge_alert(
 @router.post("/alerts/fall-report", response_model=FallReportResponse)
 async def report_browser_fall(
     body: BrowserFallReportRequest,
-    _nurse: FirebaseUser = Depends(require_nurse),
+    _user: FirebaseUser = Depends(require_firebase_user),
 ) -> FallReportResponse:
     """Ingest a fall detected in the browser and broadcast CRITICAL_FALL to nurses."""
     if not should_accept_fall_report(body.confidence, body.danger_level):
