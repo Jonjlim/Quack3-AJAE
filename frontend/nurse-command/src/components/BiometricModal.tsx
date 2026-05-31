@@ -22,6 +22,7 @@ interface BiometricModalProps {
   onClose: () => void;
   onEscalate: (patientId: string) => void;
   onMarkStable: (patientId: string) => void;
+  onRemove: (patientId: string) => void;
 }
 
 const ACUITY_COLOR: Record<AcuityLevel, string> = {
@@ -77,6 +78,7 @@ export function BiometricModal({
   onClose,
   onEscalate,
   onMarkStable,
+  onRemove,
 }: BiometricModalProps) {
   const [showCasefile, setShowCasefile] = useState(false);
 
@@ -334,6 +336,28 @@ export function BiometricModal({
               Mark Stable
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Remove ${patient.display_name} from the queue? They will need to check in again to rejoin.`,
+                )
+              ) {
+                onRemove(patient.patient_id);
+                onClose();
+              }
+            }}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{
+              background: "#f8fafc",
+              color: "#64748b",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            Remove from queue
+          </button>
         </div>
       </div>
 

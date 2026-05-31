@@ -113,6 +113,11 @@ class IntakeResponse(BaseModel):
     created_at: datetime
 
 
+class PatientRemoveResponse(BaseModel):
+    patient_id: str
+    removed: bool = True
+
+
 class QueueStatus(BaseModel):
     patient_id: str
     queue_position: int

@@ -69,6 +69,7 @@ export default function App() {
     setDemoMode,
     escalatePatient,
     markStable,
+    removePatient,
     addPatient,
   } = useTriageSocket();
 
@@ -346,6 +347,7 @@ export default function App() {
         onClose={() => setSelectedPatient(null)}
         onEscalate={escalatePatient}
         onMarkStable={markStable}
+        onRemove={(patientId) => void removePatient(patientId)}
       />
     </div>
   );

@@ -70,6 +70,17 @@ class StateService:
         self._recompute()
         return self.get_patient(patient.patient_id) or patient
 
+    def remove_patient(self, patient_id: str) -> bool:
+        patient = self.get_patient(patient_id)
+        if patient is None:
+            return False
+        self.patients = [p for p in self.patients if p.patient_id != patient_id]
+        self._hr_buffer.pop(patient_id, None)
+        self._hr_ema.pop(patient_id, None)
+        self._last_bio_alert_at.pop(patient_id, None)
+        self._recompute()
+        return True
+
     def get_queue_status(self, patient_id: str) -> QueueStatus | None:
         patient = self.get_patient(patient_id)
         if patient is None:

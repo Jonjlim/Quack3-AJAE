@@ -17,6 +17,7 @@ from shared.schemas.telemetry import (
     DemoFallTriggerResponse,
     FallReportResponse,
     PatientRecord,
+    PatientRemoveResponse,
     QueueStatus,
 )
 
@@ -43,6 +44,18 @@ async def get_acuity_load(_nurse: FirebaseUser = Depends(require_nurse)) -> Acui
 @router.get("/patients", response_model=list[PatientRecord])
 async def get_patients(_nurse: FirebaseUser = Depends(require_nurse)) -> list[PatientRecord]:
     return state_service.get_patients()
+
+
+@router.delete("/patients/{patient_id}", response_model=PatientRemoveResponse)
+async def remove_patient(
+    patient_id: str,
+    _nurse: FirebaseUser = Depends(require_nurse),
+) -> PatientRemoveResponse:
+    """Remove a patient from the live queue (e.g. seen by provider or left without being seen)."""
+    if not state_service.remove_patient(patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    await events.patients_snapshot()
+    return PatientRemoveResponse(patient_id=patient_id)
 
 
 @router.post("/patients/{patient_id}/camera", response_model=PatientRecord)
