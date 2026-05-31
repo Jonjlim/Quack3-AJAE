@@ -14,6 +14,7 @@ interface BiometricModalProps {
   patient: PatientRecord | null;
   hrHistory: Record<string, BiometricReading[]>;
   latestBiometric: BiometricReading | null;
+  patientVideo: RemoteVideoTrack | null;
   onClose: () => void;
   onEscalate: (patientId: string) => void;
   onMarkStable: (patientId: string) => void;

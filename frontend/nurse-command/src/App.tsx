@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { BiometricModal } from "./components/BiometricModal";
 import { PatientGrid } from "./components/PatientGrid";
 import { WideAngleFeed } from "./components/WideAngleFeed";
+import { useLiveKitRoom } from "./hooks/useLiveKitRoom";
 import { useTriageSocket } from "./hooks/useTriageSocket";
 import { CheckInTab } from "./pages/CheckInPage";
 
@@ -210,6 +211,7 @@ export default function App() {
         patient={selectedPatient}
         hrHistory={hrHistory}
         latestBiometric={latestBiometric}
+        patientVideo={patientVideo}
         onClose={() => setSelectedPatient(null)}
         onEscalate={escalatePatient}
         onMarkStable={markStable}

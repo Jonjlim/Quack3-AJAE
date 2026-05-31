@@ -82,6 +82,19 @@ export function sendHelpRequest(ws: WebSocket, patientId: string): void {
   ws.send(JSON.stringify(envelope));
 }
 
+export function sendCameraStatus(ws: WebSocket, patientId: string, enabled: boolean): void {
+  const envelope: TelemetryEnvelope = {
+    version: "1.0",
+    type: "CAMERA_STATUS",
+    timestamp: new Date().toISOString(),
+    payload: {
+      patient_id: patientId,
+      enabled,
+    },
+  };
+  ws.send(JSON.stringify(envelope));
+}
+
 export function isMockMode(): boolean {
   return USE_MOCK;
 }

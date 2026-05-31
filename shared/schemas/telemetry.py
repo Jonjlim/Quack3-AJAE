@@ -52,6 +52,7 @@ class TelemetryEventType(str, Enum):
     ALERT = "ALERT"
     QUEUE_UPDATE = "QUEUE_UPDATE"
     HELP_ACK = "HELP_ACK"
+    CAMERA_STATUS = "CAMERA_STATUS"
 
 
 class BiometricReading(BaseModel):
@@ -151,6 +152,11 @@ class TelemetryEnvelope(BaseModel):
 class HelpRequestPayload(BaseModel):
     patient_id: str
     message: str = "Immediate help requested"
+
+
+class CameraStatusPayload(BaseModel):
+    patient_id: str
+    enabled: bool
 
 
 class DemoFallTriggerResponse(BaseModel):
