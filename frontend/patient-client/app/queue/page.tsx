@@ -147,8 +147,8 @@ function QueueContent() {
 
   if (!patientId) {
     return (
-      <PageShell>
-        <p className="text-center text-muted">Redirecting to sign in…</p>
+      <PageShell title="Patient Portal" subtitle="Sign in with your patient ID">
+        <p className="text-center text-sm text-muted">Redirecting to sign in…</p>
       </PageShell>
     );
   }
@@ -197,10 +197,11 @@ function QueueContent() {
   }
 
   return (
-    <PageShell>
+    <PageShell title="Your queue" subtitle="Live waiting room status">
       {fetchError && (
         <p
-          className="rounded-2xl bg-clay/15 px-4 py-3 text-sm font-medium text-clay"
+          className="rounded-xl px-4 py-3 text-sm font-medium"
+          style={{ background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e" }}
           role="alert"
         >
           {fetchError}
@@ -228,7 +229,7 @@ export default function QueuePage() {
   return (
     <Suspense
       fallback={
-        <PageShell>
+        <PageShell title="Your queue" subtitle="Loading…">
           <PageSkeleton />
         </PageShell>
       }

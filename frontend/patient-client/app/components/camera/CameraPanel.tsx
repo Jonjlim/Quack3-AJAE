@@ -28,7 +28,7 @@ export function CameraPanel({ patientId, onCameraChange }: CameraPanelProps) {
       <div className="relative mt-5">
         {!enabled && (
           <div
-            className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50"
+            className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border bg-surface-2"
             aria-hidden={enabled}
           >
             <p className="text-sm text-muted">Camera preview will appear here</p>
@@ -36,21 +36,24 @@ export function CameraPanel({ patientId, onCameraChange }: CameraPanelProps) {
         )}
 
         {enabled && (
-          <div className="camera-feed-correct relative overflow-hidden rounded-lg border border-neutral-200">
+          <div className="camera-feed-correct relative overflow-hidden rounded-xl border border-border">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="aspect-video w-full bg-neutral-900 object-cover"
+              className="aspect-video w-full bg-slate-950 object-cover"
             />
             {connecting && (
-              <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/50">
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50">
                 <CalmLoader label="Connecting…" />
               </div>
             )}
             {!connecting && (
-              <div className="absolute left-2 top-2 rounded-md border border-neutral-200 bg-surface px-2 py-1 text-xs font-medium text-ink">
+              <div
+                className="absolute left-2 top-2 rounded-lg px-2 py-1 text-[10px] font-semibold text-white"
+                style={{ background: "rgba(37,99,235,0.85)" }}
+              >
                 Camera on — nurse can view
               </div>
             )}

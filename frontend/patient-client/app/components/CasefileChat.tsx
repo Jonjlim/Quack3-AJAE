@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sendAudioMessage, sendTextMessage, getConversation } from "@/lib/casefile-client";
 import type { CasefileMessage } from "@shared/types/telemetry";
+import { Surface } from "./ui/Surface";
 
 interface CasefileChatProps {
   patientId: string;
@@ -148,7 +149,7 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
 
   if (!isExpanded) {
     return (
-      <section className="rounded-xl border border-neutral-200/80 bg-surface p-5 shadow-sm">
+      <Surface>
         <h2 className="text-section-title">Symptom questions</h2>
         <p className="mt-2 text-sm text-muted">
           Answer a few questions while you wait. Your answers help your care team prepare.
@@ -156,22 +157,25 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="mt-5 w-full rounded-lg bg-sage px-5 py-3 text-base font-medium text-white hover:bg-[#3d5a4e]"
+          className="mt-5 w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
         >
           Open intake questions
         </button>
-      </section>
+      </Surface>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-neutral-200/80 bg-surface shadow-sm">
-      <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+    <section
+      className="overflow-hidden rounded-2xl border border-border bg-surface"
+      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)" }}
+    >
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
           <h2 className="text-section-title">Symptom questions</h2>
           <p className="text-sm text-muted">Helps your care team prepare</p>
         </div>
-        <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-muted">
+        <span className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[10px] font-semibold text-muted">
           {messages.length} messages
         </span>
       </div>
@@ -190,10 +194,10 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
             className={`mb-3 flex ${msg.role === "patient" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === "patient"
-                  ? "bg-neutral-100 text-ink"
-                  : "border border-neutral-200 bg-surface text-ink"
+                  ? "bg-accent/10 text-ink"
+                  : "border border-border bg-surface-2 text-ink"
               }`}
             >
               {msg.content}
@@ -203,7 +207,7 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
 
         {isLoading && (
           <div className="mb-2 flex justify-start">
-            <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-muted">
+            <div className="rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted">
               …
             </div>
           </div>
@@ -212,12 +216,15 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
       </div>
 
       {error && (
-        <p className="mx-5 mb-2 rounded-lg border border-attention/30 bg-attention/5 px-4 py-2 text-sm text-attention">
+        <p
+          className="mx-5 mb-2 rounded-xl px-4 py-2 text-sm"
+          style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626" }}
+        >
           {error}
         </p>
       )}
 
-      <div className="border-t border-neutral-200 px-5 py-4">
+      <div className="border-t border-border px-5 py-4">
         {showTextInput ? (
           <div className="flex gap-2">
             <input
@@ -227,13 +234,13 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendText()}
               placeholder="Type your message…"
               disabled={isLoading}
-              className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 disabled:opacity-50"
+              className="min-w-0 flex-1 rounded-xl border border-border px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50"
             />
             <button
               type="button"
               onClick={handleSendText}
               disabled={isLoading || !textDraft.trim()}
-              className="rounded-lg bg-sage px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
             >
               Send
             </button>
@@ -245,7 +252,7 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isLoading}
               className={`flex h-14 w-14 items-center justify-center rounded-full text-white disabled:opacity-50 ${
-                isRecording ? "bg-clay" : "bg-sage"
+                isRecording ? "bg-clay" : "bg-accent"
               }`}
               aria-label={isRecording ? "Stop recording" : "Start recording"}
             >
@@ -282,7 +289,7 @@ export function CasefileChat({ patientId }: CasefileChatProps) {
         <button
           type="button"
           onClick={() => setShowTextInput(!showTextInput)}
-          className="mt-3 w-full text-center text-xs text-sage"
+          className="mt-3 w-full text-center text-xs text-accent"
         >
           {showTextInput ? "Use microphone instead" : "Type instead"}
         </button>
