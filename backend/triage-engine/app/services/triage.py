@@ -28,6 +28,20 @@ ACUITY_MINUTES: dict[AcuityLevel, int] = {
 
 CRITICAL_HR_BPM = 50
 HR_DROP_RATIO = 0.8
+MIN_ALERT_CONFIDENCE = 0.6
+
+
+def format_hr_alert_message(reading: BiometricReading) -> str:
+    hr = reading.heart_rate_bpm
+    if hr is None:
+        return "Critical biometric drop detected"
+    if reading.heart_rate_bpm_low is not None and reading.heart_rate_bpm_high is not None:
+        conf = f", {reading.confidence:.0%} confidence" if reading.confidence else ""
+        return (
+            f"Critical biometric drop detected (HR {hr:.0f} bpm "
+            f"({reading.heart_rate_bpm_low:.0f}–{reading.heart_rate_bpm_high:.0f}){conf})"
+        )
+    return f"Critical biometric drop detected (HR {hr:.0f} bpm)"
 
 
 def wait_minutes_since(created_at: datetime, now: datetime | None = None) -> int:
@@ -95,6 +109,11 @@ def is_biometric_critical(
     reading: BiometricReading,
     previous: BiometricReading | None,
 ) -> bool:
+    if reading.confidence < MIN_ALERT_CONFIDENCE:
+        return False
+    if reading.measurement_status == "unreliable":
+        return False
+
     hr = reading.heart_rate_bpm
     if hr is not None and hr < CRITICAL_HR_BPM:
         return True

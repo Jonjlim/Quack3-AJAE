@@ -1,14 +1,18 @@
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextBin = path.join(__dirname, "..", "node_modules", ".bin", "next");
+const certDir = path.join(__dirname, "..", "certificates");
+const keyPath = path.join(certDir, "dev-key.pem");
+const certPath = path.join(certDir, "dev-cert.pem");
+const sanMetaPath = path.join(certDir, "dev-san.txt");
 
 function isUsableLanIp(ip) {
   if (!ip || ip.startsWith("127.") || ip.startsWith("169.254.")) return false;
-  // Guest/captive-portal networks often assign unreachable addresses like 192.0.0.2
   if (ip.startsWith("192.0.0.")) return false;
   return (
     ip.startsWith("192.168.") ||
@@ -51,19 +55,89 @@ function getLanIp() {
   }
 }
 
+function ensureDevCert(lanIp) {
+  fs.mkdirSync(certDir, { recursive: true });
+  const sans = ["DNS:localhost", "IP:127.0.0.1", "IP:0.0.0.0"];
+  if (lanIp) sans.push(`IP:${lanIp}`);
+  const sanLine = sans.join(",");
+
+  if (
+    fs.existsSync(keyPath) &&
+    fs.existsSync(certPath) &&
+    fs.existsSync(sanMetaPath) &&
+    fs.readFileSync(sanMetaPath, "utf8").trim() === sanLine
+  ) {
+    return { keyPath, certPath };
+  }
+
+  const result = spawnSync(
+    "openssl",
+    [
+      "req",
+      "-x509",
+      "-newkey",
+      "rsa:2048",
+      "-nodes",
+      "-keyout",
+      keyPath,
+      "-out",
+      certPath,
+      "-days",
+      "365",
+      "-subj",
+      "/CN=localhost",
+      "-addext",
+      `subjectAltName=${sanLine}`,
+    ],
+    { encoding: "utf8" },
+  );
+
+  if (result.status !== 0) {
+    console.warn("  Could not generate dev HTTPS cert (need openssl).");
+    console.warn("  Camera on phone: run npm run dev:tunnel");
+    return null;
+  }
+
+  fs.writeFileSync(sanMetaPath, sanLine);
+  return { keyPath, certPath };
+}
+
 const ip = getLanIp();
+const cert = ensureDevCert(ip);
+
 console.log("");
-if (ip) {
-  console.log("  Open on your phone (same Wi-Fi):");
-  console.log(`  http://${ip}:3000`);
+if (cert) {
+  console.log("  Open on this computer:");
+  console.log("  https://localhost:3000");
+  if (ip) {
+    console.log("");
+    console.log("  Open on your phone (same Wi-Fi) — camera needs HTTPS:");
+    console.log(`  https://${ip}:3000`);
+    console.log("  (Tap Advanced → Proceed if the browser warns about the certificate)");
+  }
+} else if (ip) {
+  console.log("  Open on this computer (camera works on localhost):");
+  console.log("  http://localhost:3000");
+  console.log("");
+  console.log("  Phone camera requires HTTPS — run: npm run dev:tunnel");
 } else {
   console.log("  LAN URL unavailable (guest Wi-Fi often blocks phone access).");
   console.log("  Use: npm run dev:tunnel");
-  console.log("  Or connect Mac + phone to a personal hotspot, then restart.");
 }
 console.log("");
 
-const child = spawn(nextBin, ["dev", "-H", "0.0.0.0", "-p", "3000"], {
+const nextArgs = ["dev", "-H", "0.0.0.0", "-p", "3000"];
+if (cert) {
+  nextArgs.push(
+    "--experimental-https",
+    "--experimental-https-key",
+    cert.keyPath,
+    "--experimental-https-cert",
+    cert.certPath,
+  );
+}
+
+const child = spawn(nextBin, nextArgs, {
   stdio: "inherit",
   shell: process.platform === "win32",
 });
