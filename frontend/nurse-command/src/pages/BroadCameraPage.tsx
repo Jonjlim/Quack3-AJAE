@@ -128,8 +128,9 @@ export default function BroadCameraPage() {
                   )}
                 </div>
                 <p className="text-sm text-slate-400">
-                  Publishing 720p room video. 10-second clips are sent to Gemini AI every 8
-                  seconds for fall detection. Nurses see &quot;{activeRoomName}&quot; on the
+                  Publishing 720p room video. The nurse dashboard runs real-time pose detection
+                  and sends clips to Gemini AI instantly on a detected fall. A 30-second
+                  fallback clip is also sent automatically. Nurses see &quot;{activeRoomName}&quot; on the
                   wide-angle feed.
                 </p>
                 <div className="relative w-full overflow-hidden rounded-xl bg-black">

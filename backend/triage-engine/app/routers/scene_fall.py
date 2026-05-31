@@ -26,18 +26,22 @@ events = EventBus(manager, state_service)
 
 @router.post("/alerts/analyze-clip", response_model=ClipFallAnalysisResponse)
 async def analyze_fall_clip(
-    clip: Annotated[UploadFile, File(description="10-second video clip (webm or mp4)")],
+    clip: Annotated[UploadFile, File(description="Video clip (webm or mp4)")],
     room_name: Annotated[str | None, Form()] = None,
     patient_id: Annotated[str | None, Form()] = None,
     mime_type: Annotated[str, Form()] = "video/webm",
+    browser_confidence: Annotated[float | None, Form()] = None,
     _user: FirebaseUser = Depends(require_firebase_user),
 ) -> ClipFallAnalysisResponse:
-    """Analyze a 10-second room-camera clip for falls using Gemini.
+    """Analyze a room-camera clip for falls using Gemini.
 
-    The frontend sends overlapping 10-second clips every 8 seconds.  The backend
-    runs scene-intel's detect_fall() (Gemini 2.5 Flash video analysis) and, when a
-    fall is detected above the confidence threshold, creates a CRITICAL_FALL alert
-    and broadcasts it to all connected nurses via WebSocket.
+    Clips are sent either on a 30-second fallback timer or immediately when the
+    nurse dashboard's browser-side MediaPipe detector fires (event-triggered path).
+
+    When browser_confidence is provided (event-triggered), it is fused with Gemini's
+    confidence using the maximum — so both signals contribute and neither is discarded.
+    Gemini must independently confirm fall_detected=true for the fused alert to broadcast;
+    the browser-side path already sent its own immediate alert via /alerts/fall-report.
     """
     video_bytes = await clip.read()
     if not video_bytes:
@@ -49,19 +53,31 @@ async def analyze_fall_clip(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     fall_detected: bool = bool(result.get("fall_detected", False))
-    confidence: float = float(result.get("confidence", 0.0))
+    gemini_confidence: float = float(result.get("confidence", 0.0))
     danger_level: str = result.get("danger_level", "low")
+    person_collapsed: bool = bool(result.get("person_collapsed", False))
+
+    # Confidence fusion: when triggered by browser MediaPipe, take the max of both
+    # signals. Only elevate when Gemini also independently confirms the fall — if
+    # Gemini returns fall_detected=false the browser path already alerted and we skip.
+    if browser_confidence is not None and fall_detected:
+        fused_confidence = max(gemini_confidence, float(browser_confidence))
+        source_label = "Browser + AI confirmed"
+    else:
+        fused_confidence = gemini_confidence
+        source_label = "AI-detected"
 
     alert = None
     broadcast = False
 
-    if fall_detected and should_accept_fall_report(confidence, danger_level):
+    if fall_detected and should_accept_fall_report(fused_confidence, danger_level):
         location = f" in {room_name}" if room_name else ""
+        event_type = "collapse" if person_collapsed else "fall"
         message = build_fall_message(
-            confidence,
+            fused_confidence,
             danger_level,
             result.get("coordinates"),
-            f"AI-detected fall{location}",
+            f"{source_label} {event_type}{location}",
         )
         alert = state_service.create_fall_alert(message, patient_id=patient_id)
         await events.alert(alert)
@@ -69,7 +85,7 @@ async def analyze_fall_clip(
 
     return ClipFallAnalysisResponse(
         fall_detected=fall_detected,
-        confidence=confidence,
+        confidence=fused_confidence,
         danger_level=danger_level,
         coordinates=result.get("coordinates"),
         frame_timestamp=result.get("frame_timestamp"),

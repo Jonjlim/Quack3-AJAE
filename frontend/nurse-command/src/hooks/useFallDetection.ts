@@ -1,16 +1,15 @@
 /**
- * Room-camera fall detection via backend Gemini video analysis.
+ * Room-camera fallback Gemini analysis — safety-net polling from the device.
  *
  * Records a rolling 10-second buffer of 1-second MediaRecorder chunks.
- * Every 8 seconds the current buffer is assembled into a clip and posted to
- * POST /api/v1/alerts/analyze-clip.  The backend runs scene-intel's Gemini
- * analysis and broadcasts CRITICAL_FALL alerts to nurses directly — no
- * client-side ML inference is required.
+ * Every 30 seconds the current buffer is assembled into a clip and posted to
+ * POST /api/v1/alerts/analyze-clip as a safety net.
  *
- * Clip timing:
- *   • Clips are 10 seconds of context (enough for Gemini to judge a fall).
- *   • Clips are sent every 8 seconds → 2-second overlap between consecutive
- *     clips so no fall event falls entirely in a gap.
+ * Primary fall detection path: the nurse dashboard's RemoteVideo component
+ * runs MediaPipe on the incoming LiveKit stream and immediately triggers an
+ * event-driven clip send to analyze-clip when a pose collapse is detected.
+ * This hook is the fallback for scenarios where the nurse dashboard is offline
+ * or the MediaPipe model has not yet loaded.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -18,10 +17,10 @@ import { authFetch } from "../lib/auth-fetch";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
-const CHUNK_MS = 1_000;       // MediaRecorder timeslice — one chunk per second
-const MAX_CHUNKS = 10;        // keep last 10 chunks → 10-second rolling window
-const SEND_INTERVAL_MS = 8_000; // POST a clip every 8 seconds
-const MIN_CHUNKS_TO_SEND = 8;  // require at least 8 seconds before first send
+const CHUNK_MS = 1_000;         // MediaRecorder timeslice — one chunk per second
+const MAX_CHUNKS = 10;          // keep last 10 chunks → 10-second rolling window
+const SEND_INTERVAL_MS = 30_000; // fallback poll every 30 seconds
+const MIN_CHUNKS_TO_SEND = 8;   // require at least 8 seconds before first send
 
 function getSupportedMimeType(): string {
   const candidates = [

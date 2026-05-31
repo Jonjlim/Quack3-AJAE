@@ -3,19 +3,32 @@
 import json
 from generalFunctions.GeminiAPI import query_gemini_video
 
-_PROMPT = """You are a hospital urgent care fall detection system analyzing a video clip from a monitoring camera.
+_PROMPT = """You are a hospital emergency room fall-detection system analyzing a short video clip from a fixed overhead monitoring camera.
 
-Analyze the video for anyone that might've fallen unconscious events. Evaluate:
-1. Whether a fall occurred
-2. Whether anyone in the frame fell unconscious
-3. Your confidence level (0.0 to 1.0)
-4. The danger level: "low", "medium", or "high"
-5. If someone is determined to have fallen unconscious, approximate pixel coordinates (x, y) of the center of the person.
-6. If someone is determined to have fallen unconscious, the approximate timestamp in seconds within the clip
+Examine the clip for TWO DISTINCT medical emergency events:
+
+FALL: A person rapidly and uncontrollably transitioned from upright or seated to a floor-level position.
+  - Look for sudden downward motion, loss of balance, or body rotation toward the floor.
+  - Do NOT classify intentional crouching, bending over, or sitting down as a fall.
+
+COLLAPSE/UNCONSCIOUS: A person is lying or sprawled on the floor with NO intentional movement for at least 1.5 consecutive seconds.
+  - Distinguish this from a person who fell but immediately got back up (not a collapse).
+
+For each clip, evaluate:
+1. fall_detected — true if a rapid, uncontrolled fall motion was observed at any point in the clip.
+2. person_collapsed — true if a person appears motionless on the floor for 3 or more seconds.
+3. confidence — your overall certainty that a real medical emergency is occurring (0.0 to 1.0).
+   Use >= 0.8 only when evidence is unambiguous. Use < 0.5 when there is significant ambiguity.
+4. danger_level — "high" if person is collapsed/unconscious or fell without recovering;
+                   "medium" if person fell but recovered/is moving;
+                   "low" if no emergency is present.
+5. coordinates — approximate pixel (x, y) of the center of the person in distress; null if no emergency.
+6. frame_timestamp — seconds into the clip when the emergency first became visible; null if no emergency.
 
 Respond with ONLY valid JSON in this exact format, no other text:
 {
     "fall_detected": true or false,
+    "person_collapsed": true or false,
     "confidence": 0.0 to 1.0,
     "danger_level": "low" or "medium" or "high",
     "coordinates": {"x": int, "y": int} or null,
@@ -24,6 +37,7 @@ Respond with ONLY valid JSON in this exact format, no other text:
 
 _DEFAULT_RESULT = {
     "fall_detected": False,
+    "person_collapsed": False,
     "confidence": 0.0,
     "danger_level": "low",
     "coordinates": None,
@@ -46,6 +60,7 @@ def _parse_response(raw):
         data = json.loads(text.strip())
         return {
             "fall_detected": bool(data.get("fall_detected", False)),
+            "person_collapsed": bool(data.get("person_collapsed", False)),
             "confidence": float(data.get("confidence", 0.0)),
             "danger_level": str(data.get("danger_level", "low")),
             "coordinates": data.get("coordinates"),
