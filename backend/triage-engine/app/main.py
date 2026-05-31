@@ -32,9 +32,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ER-OVERWATCH Triage Engine", version="1.0.0", lifespan=lifespan)
 
 origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+# Allow phone/tablet dev clients on the same Wi-Fi without listing every LAN IP.
+lan_origin_regex = (
+    r"https?://("
+    r"localhost|127\.0\.0\.1|"
+    r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+    r"192\.168\.\d{1,3}\.\d{1,3}|"
+    r"172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+    r")(:\d+)?"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["*"],
+    allow_origin_regex=lan_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
