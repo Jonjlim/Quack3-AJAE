@@ -20,16 +20,20 @@ export function IntakeForm({ onSubmit }: IntakeFormProps) {
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [acuity, setAcuity] = useState<AcuityLevel>("URGENT");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       await onSubmit({
         display_name: displayName,
         chief_complaint: chiefComplaint,
         acuity_self_report: acuity,
       });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Check-in failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -83,6 +87,12 @@ export function IntakeForm({ onSubmit }: IntakeFormProps) {
           ))}
         </select>
       </div>
+
+      {error && (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"

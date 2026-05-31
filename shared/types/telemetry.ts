@@ -28,7 +28,8 @@ export type TelemetryEventType =
   | "BIOMETRIC"
   | "ALERT"
   | "QUEUE_UPDATE"
-  | "HELP_ACK";
+  | "HELP_ACK"
+  | "CAMERA_STATUS";
 
 export interface BiometricReading {
   patient_id: string;
@@ -127,6 +128,11 @@ export interface TelemetryEnvelope<T = Record<string, unknown>> {
 export interface HelpRequestPayload {
   patient_id: string;
   message?: string;
+}
+
+export interface CameraStatusPayload {
+  patient_id: string;
+  enabled: boolean;
 }
 
 export interface DemoFallTriggerResponse {
