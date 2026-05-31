@@ -18,7 +18,7 @@ load_dotenv(_ENV_PATH)
 _client = None
 
 # ── Model constants (change these to switch models) ──────────────────────────
-VIDEO_MODEL = "gemini-3.1-flash-lite"
+VIDEO_MODEL = "gemini-2.5-flash-live"
 TEXT_MODEL = "gemini-3.1-flash-lite"
 AUDIO_MODEL = "gemini-3.1-flash-lite"
 
