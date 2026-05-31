@@ -66,8 +66,14 @@ async def analyze_rppg(
     video: UploadFile = File(...),
 ) -> SceneIntelRppgResponse:
     """Run scene-intel rPPG heart-rate analysis and apply biometrics to a patient."""
-    if state_service.get_patient(patient_id) is None:
+    patient = state_service.get_patient(patient_id)
+    if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")
+    if not patient.camera_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail="Patient has not opted in to camera streaming",
+        )
 
     if not video.content_type or not video.content_type.startswith("video/"):
         raise HTTPException(status_code=415, detail="Upload must be a video file")

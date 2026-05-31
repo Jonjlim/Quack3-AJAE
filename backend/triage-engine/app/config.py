@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "secret"
-    livekit_url: str = "ws://localhost:7880"
+    livekit_url: str = "wss://your-project.livekit.cloud"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     testing: bool = False
 

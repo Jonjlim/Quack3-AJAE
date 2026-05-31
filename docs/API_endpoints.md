@@ -170,7 +170,7 @@ Roles: `patient`, `nurse`, `broad_camera`
 ```json
 {
   "token": "<jwt>",
-  "url": "ws://localhost:7880",
+  "url": "wss://your-project.livekit.cloud",
   "room": "er-waiting-room",
   "identity": "pat-001"
 }

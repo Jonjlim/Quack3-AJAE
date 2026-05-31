@@ -69,8 +69,4 @@ out/
 *.tsbuildinfo
 .turbo/
 
-# Docker volumes
-postgres_data/
-redis_data/
-
 package-lock.json
