@@ -58,8 +58,11 @@ class TelemetryEventType(str, Enum):
 class BiometricReading(BaseModel):
     patient_id: str
     heart_rate_bpm: float | None = None
+    heart_rate_bpm_low: float | None = None
+    heart_rate_bpm_high: float | None = None
     respiratory_rate_bpm: float | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+    measurement_status: Literal["reliable", "estimated", "unreliable"] | None = None
     source: Literal["rppg", "manual"] = "rppg"
     recorded_at: datetime
 
@@ -178,10 +181,21 @@ class SceneIntelFallResponse(BaseModel):
     broadcast: bool = False
 
 
+class RppgQualityMetrics(BaseModel):
+    face_coverage: float = Field(ge=0.0, le=1.0)
+    motion_score: float = Field(ge=0.0, le=1.0)
+    peak_prominence: float = Field(ge=0.0, le=1.0)
+    chrom_fft_agreement_bpm: float | None = None
+
+
 class RppgAnalysisResult(BaseModel):
     heart_rate_bpm: float | None = None
+    heart_rate_bpm_low: float | None = None
+    heart_rate_bpm_high: float | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.0)
     signal_quality: Literal["good", "fair", "poor"]
+    measurement_status: Literal["reliable", "estimated", "unreliable"] = "unreliable"
+    quality_metrics: RppgQualityMetrics | None = None
     error: str | None = None
 
 

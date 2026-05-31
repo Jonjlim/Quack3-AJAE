@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import {
+  Area,
+  ComposedChart,
   Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -44,6 +45,29 @@ function formatWait(minutes: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function confidenceBadge(bio: BiometricReading | null | undefined): {
+  label: string;
+  color: string;
+} | null {
+  if (!bio || bio.confidence <= 0) return null;
+  if (bio.measurement_status === "reliable" || bio.confidence >= 0.65) {
+    return { label: "Reliable", color: "#639922" };
+  }
+  if (bio.measurement_status === "estimated" || bio.confidence >= 0.5) {
+    return { label: "Estimated", color: "#BA7517" };
+  }
+  return { label: "Low confidence", color: "#64748b" };
+}
+
+function hrVitalDisplay(bio: BiometricReading | null | undefined): string {
+  if (bio?.heart_rate_bpm == null) return "—";
+  const hr = Math.round(bio.heart_rate_bpm);
+  if (bio.heart_rate_bpm_low != null && bio.heart_rate_bpm_high != null) {
+    return `${hr} (${Math.round(bio.heart_rate_bpm_low)}–${Math.round(bio.heart_rate_bpm_high)})`;
+  }
+  return String(hr);
+}
+
 export function BiometricModal({
   patient,
   hrHistory,
@@ -71,9 +95,19 @@ export function BiometricModal({
       : patient.last_biometric;
 
   const hrData = history.length > 0 ? history : latest ? [latest] : [];
+  const chartData = hrData.map((r) => ({
+    ...r,
+    hr_low: r.heart_rate_bpm_low ?? r.heart_rate_bpm,
+    hr_high: r.heart_rate_bpm_high ?? r.heart_rate_bpm,
+    ci_band: r.heart_rate_bpm_high != null && r.heart_rate_bpm_low != null
+      ? r.heart_rate_bpm_high - r.heart_rate_bpm_low
+      : 0,
+  }));
   const baselineHr = hrData.length > 0 ? hrData[0].heart_rate_bpm : null;
   const acuityColor = ACUITY_COLOR[patient.acuity] ?? "#639922";
   const triageNum = ACUITY_TRIAGE[patient.acuity] ?? 5;
+  const badge = confidenceBadge(latest);
+  const hrMuted = (latest?.confidence ?? 0) < 0.5 || latest?.measurement_status === "unreliable";
 
   return (
     <div
@@ -116,12 +150,27 @@ export function BiometricModal({
         </div>
 
         <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
+          {badge && (
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide"
+                style={{ background: badge.color + "22", color: badge.color, border: `1px solid ${badge.color}55` }}
+              >
+                Vitals · {badge.label}
+              </span>
+              {latest && latest.confidence > 0 && (
+                <span className="text-xs text-slate-500">
+                  {Math.round(latest.confidence * 100)}% confidence
+                </span>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3">
             <VitalCard
               label="Heart Rate"
-              value={latest?.heart_rate_bpm != null ? String(latest.heart_rate_bpm) : "—"}
+              value={hrVitalDisplay(latest)}
               unit="bpm"
-              color={acuityColor}
+              color={hrMuted ? "#64748b" : acuityColor}
             />
             <VitalCard
               label="Resp. Rate"
@@ -139,14 +188,14 @@ export function BiometricModal({
             />
           </div>
 
-          {hrData.length > 1 && (
+          {chartData.length > 1 && (
             <div>
               <p className="mb-2 text-xs uppercase tracking-widest text-slate-500">
-                HR Trend — last {hrData.length} readings
+                HR Trend — last {chartData.length} readings (shaded = CI)
               </p>
               <div style={{ height: 130 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={hrData} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
+                  <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
                     <XAxis dataKey="recorded_at" hide />
                     <YAxis
                       domain={["auto", "auto"]}
@@ -160,7 +209,12 @@ export function BiometricModal({
                         borderRadius: "6px",
                         fontSize: "12px",
                       }}
-                      formatter={(v: unknown) => [`${v} bpm`, "HR"]}
+                      formatter={(v: unknown, name: string) => {
+                        if (name === "heart_rate_bpm") return [`${v} bpm`, "HR"];
+                        if (name === "hr_low") return [`${v} bpm`, "CI low"];
+                        if (name === "hr_high") return [`${v} bpm`, "CI high"];
+                        return [String(v), name];
+                      }}
                       labelFormatter={() => ""}
                     />
                     {baselineHr != null && (
@@ -171,16 +225,32 @@ export function BiometricModal({
                         strokeOpacity={0.6}
                       />
                     )}
+                    <Area
+                      type="monotone"
+                      dataKey="hr_high"
+                      stroke="none"
+                      fill={acuityColor}
+                      fillOpacity={0.15}
+                      isAnimationActive={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="hr_low"
+                      stroke="none"
+                      fill="#0d1526"
+                      fillOpacity={1}
+                      isAnimationActive={false}
+                    />
                     <Line
                       type="monotone"
                       dataKey="heart_rate_bpm"
-                      stroke={acuityColor}
+                      stroke={hrMuted ? "#64748b" : acuityColor}
                       strokeWidth={2}
-                      dot={{ fill: acuityColor, r: 2.5 }}
+                      dot={{ fill: hrMuted ? "#64748b" : acuityColor, r: 2.5 }}
                       activeDot={{ r: 4 }}
                       isAnimationActive={false}
                     />
-                  </LineChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>

@@ -1,30 +1,18 @@
-import type { BiometricReading } from "@shared/types/telemetry";
+import type { RppgAnalysisResult, SceneIntelRppgResponse } from "@shared/types/telemetry";
+import { getApiBase } from "@/lib/api-base";
 import { isMockMode } from "@/lib/ws-client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-export interface RppgAnalysisResult {
-  heart_rate_bpm: number | null;
-  confidence: number;
-  signal_quality: "good" | "fair" | "poor";
-  error: string | null;
-}
-
-export interface SceneIntelRppgResponse {
-  analysis: RppgAnalysisResult;
-  biometric: BiometricReading | null;
-  broadcast: boolean;
-}
+export type { RppgAnalysisResult, SceneIntelRppgResponse };
 
 function preferredMimeType(): string {
-  const candidates = ["video/webm;codecs=vp8", "video/webm", "video/mp4"];
+  const candidates = ["video/mp4", "video/webm;codecs=vp8", "video/webm"];
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
 }
 
-/** Record a short clip from a camera track for rPPG analysis (~5s, ≥30 frames). */
+/** Record a short clip from a camera track for rPPG analysis (~8s). */
 export function recordVideoClip(
   track: MediaStreamTrack,
-  durationMs = 5000,
+  durationMs = 8000,
 ): Promise<Blob> {
   const stream = new MediaStream([track]);
   const mimeType = preferredMimeType();
@@ -33,7 +21,7 @@ export function recordVideoClip(
     const chunks: BlobPart[] = [];
     const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: 500_000,
+      videoBitsPerSecond: 1_500_000,
     });
 
     recorder.ondataavailable = (event) => {
@@ -64,18 +52,31 @@ export async function submitRppgClip(
     return {
       analysis: {
         heart_rate_bpm: 72,
+        heart_rate_bpm_low: 68,
+        heart_rate_bpm_high: 76,
         confidence: 0.85,
         signal_quality: "good",
+        measurement_status: "reliable",
+        quality_metrics: {
+          face_coverage: 0.92,
+          motion_score: 0.08,
+          peak_prominence: 0.78,
+          chrom_fft_agreement_bpm: 2.0,
+        },
         error: null,
       },
       biometric: {
         patient_id: patientId,
         heart_rate_bpm: 72,
+        heart_rate_bpm_low: 68,
+        heart_rate_bpm_high: 76,
         respiratory_rate_bpm: null,
         confidence: 0.85,
+        measurement_status: "reliable",
         source: "rppg",
         recorded_at: new Date().toISOString(),
       },
+      alert: null,
       broadcast: false,
     };
   }
@@ -85,7 +86,7 @@ export async function submitRppgClip(
   form.append("patient_id", patientId);
   form.append("video", blob, `rppg-clip.${extension}`);
 
-  const response = await fetch(`${API_BASE}/api/v1/scene-intel/rppg`, {
+  const response = await fetch(`${getApiBase()}/api/v1/scene-intel/rppg`, {
     method: "POST",
     body: form,
   });

@@ -5,6 +5,7 @@ from app.services.triage import (
     bump_acuity,
     compute_acuity_load,
     estimate_wait_minutes,
+    format_hr_alert_message,
     is_biometric_critical,
     wait_minutes_since,
 )
@@ -23,10 +24,13 @@ from shared.schemas.telemetry import (
 class StateService:
     """Live triage state — in-memory with full queue recomputation on every mutation."""
 
+    _HR_BUFFER_SIZE = 3
+
     def __init__(self, seed_patients: list[PatientRecord] | None = None) -> None:
         self.patients: list[PatientRecord] = list(seed_patients or [])
         self.alerts: list[AlertEvent] = []
         self.acuity_load: AcuityLoad = compute_acuity_load(self.patients)
+        self._hr_buffer: dict[str, list[float]] = {}
         if self.patients:
             self._recompute()
 
@@ -100,24 +104,40 @@ class StateService:
         self._replace_patient(updated)
         return self.get_patient(patient_id)
 
+    def _smooth_hr(self, patient_id: str, hr: float) -> float:
+        buffer = self._hr_buffer.setdefault(patient_id, [])
+        buffer.append(hr)
+        if len(buffer) > self._HR_BUFFER_SIZE:
+            buffer.pop(0)
+        sorted_vals = sorted(buffer)
+        mid = len(sorted_vals) // 2
+        if len(sorted_vals) % 2 == 1:
+            return sorted_vals[mid]
+        return (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0
+
     def apply_biometric(self, reading: BiometricReading) -> tuple[PatientRecord | None, AlertEvent | None]:
         patient = self.get_patient(reading.patient_id)
         if patient is None:
             return None, None
 
+        smoothed = reading
+        if reading.heart_rate_bpm is not None:
+            smooth_hr = self._smooth_hr(reading.patient_id, reading.heart_rate_bpm)
+            smoothed = reading.model_copy(update={"heart_rate_bpm": round(smooth_hr, 1)})
+
         previous = patient.last_biometric
-        updated = patient.model_copy(update={"last_biometric": reading})
+        updated = patient.model_copy(update={"last_biometric": smoothed})
         self._replace_patient(updated)
 
         alert: AlertEvent | None = None
-        if is_biometric_critical(reading, previous):
+        if is_biometric_critical(smoothed, previous):
             self.escalate_patient(reading.patient_id)
             alert = AlertEvent(
                 alert_id=f"alert-bio-{reading.patient_id}-{int(datetime.now(timezone.utc).timestamp())}",
                 type=AlertType.BIOMETRIC_DROP,
                 severity=AlertSeverity.CRITICAL,
                 patient_id=reading.patient_id,
-                message=f"Critical biometric drop detected (HR {reading.heart_rate_bpm} bpm)",
+                message=format_hr_alert_message(smoothed),
                 acknowledged=False,
                 created_at=datetime.now(timezone.utc),
             )

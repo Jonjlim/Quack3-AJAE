@@ -1,15 +1,11 @@
-import type { BiometricReading } from "@shared/types/telemetry";
+import type { BiometricReading, RppgAnalysisResult } from "@shared/types/telemetry";
 import { useEffect, useRef } from "react";
-import {
-  recordVideoClip,
-  submitRppgClip,
-  type RppgAnalysisResult,
-} from "@/lib/rppg-client";
+import { recordVideoClip, submitRppgClip } from "@/lib/rppg-client";
 import { isMockMode } from "@/lib/ws-client";
 
 const WARMUP_MS = 3500;
-const SAMPLE_INTERVAL_MS = 12_000;
-const CLIP_DURATION_MS = 5000;
+const SAMPLE_INTERVAL_MS = 10_000;
+const CLIP_DURATION_MS = 8000;
 const MAX_RETRIES = 2;
 
 export interface UseRppgSamplerOptions {

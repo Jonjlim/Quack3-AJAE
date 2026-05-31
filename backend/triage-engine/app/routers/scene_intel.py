@@ -92,19 +92,28 @@ async def analyze_rppg(
     alert = None
     broadcast = False
 
-    if analysis.heart_rate_bpm is not None:
+    should_broadcast = (
+        analysis.heart_rate_bpm is not None
+        and analysis.measurement_status != "unreliable"
+        and analysis.confidence >= 0.5
+    )
+
+    if should_broadcast:
         reading = BiometricReading(
             patient_id=patient_id,
             heart_rate_bpm=analysis.heart_rate_bpm,
+            heart_rate_bpm_low=analysis.heart_rate_bpm_low,
+            heart_rate_bpm_high=analysis.heart_rate_bpm_high,
             respiratory_rate_bpm=None,
             confidence=analysis.confidence,
+            measurement_status=analysis.measurement_status,
             source="rppg",
             recorded_at=datetime.now(timezone.utc),
         )
         patient, bio_alert = state_service.apply_biometric(reading)
-        biometric = reading
+        biometric = patient.last_biometric if patient else reading
         broadcast = True
-        await events.biometric(reading)
+        await events.biometric(biometric)
         if patient:
             await events.patient_update(patient)
         if bio_alert:
