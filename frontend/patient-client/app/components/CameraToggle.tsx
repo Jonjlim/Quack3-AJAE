@@ -89,7 +89,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       await stopStream();
       onCameraChange?.(false);
       setStatus(
-        "Connection failed — ensure LiveKit is running (docker compose up -d), then retry",
+        "Connection failed — check LiveKit Cloud credentials and retry",
       );
     }
   }, [enabled, identity, onCameraChange, roomName, stopStream]);
@@ -99,7 +99,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       <h3 className="text-lg font-semibold text-slate-900">Remote Evaluation</h3>
       <p className="mt-1 text-sm text-slate-500">
         Share your camera so a nurse can assess you while you wait. Requires LiveKit
-        running (<code className="text-xs">docker compose up -d</code>).
+        Cloud credentials configured on the backend.
       </p>
       <video
         ref={videoRef}

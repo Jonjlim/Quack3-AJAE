@@ -7,7 +7,7 @@ You own `backend/triage-engine/`. This is the central nervous system: REST API, 
 ```bash
 # From repo root
 cp .env.example .env
-docker compose up -d          # Postgres, Redis, LiveKit
+# Set LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL in .env (LiveKit Cloud)
 
 cd backend/triage-engine
 python3.11 -m venv .venv && source .venv/bin/activate
@@ -27,7 +27,7 @@ Interactive API docs: http://localhost:8000/docs
 |---------|---------|--------|
 | Patient intake | `routers/intake.py` | Live — adds patient, re-sorts queue, broadcasts to nurses |
 | Queue / acuity REST | `routers/queue.py` | Live |
-| LiveKit tokens | `routers/livekit_tokens.py` | Live — needs `docker compose` LiveKit |
+| LiveKit tokens | `routers/livekit_tokens.py` | Live — needs LiveKit Cloud credentials in `.env` |
 | Triage sort algorithm | `services/triage.py` | Live — acuity-weighted, escalation boost |
 | Live state | `services/state.py` | Live — in-memory, recomputes on every mutation |
 | WebSocket hub | `ws/manager.py`, `ws/nurse.py` | Live — nurse, patient, AI channels |
@@ -157,6 +157,6 @@ Schema changes go in `shared/schemas/telemetry.py` — notify Architects 1, 2, 4
 - [ ] Patient intake creates new row on nurse grid
 - [ ] `POST /api/v1/demo/trigger-fall` shows sticky alert
 - [ ] Help button on patient PWA fires alert on nurse dash
-- [ ] LiveKit token endpoint returns JWT (`docker compose` LiveKit up)
+- [ ] LiveKit token endpoint returns JWT (LiveKit Cloud credentials in `.env`)
 
 See [`docs/DEMO.md`](../../docs/DEMO.md) for the full judging playbook.
