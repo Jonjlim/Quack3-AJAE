@@ -3,6 +3,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Overrides any dashboard start command (Railway runs without a shell — no `cd`).
+startCommand = "sh /app/backend/triage-engine/docker-entrypoint.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 600
 restartPolicyType = "ON_FAILURE"
+
