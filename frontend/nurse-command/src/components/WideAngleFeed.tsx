@@ -42,19 +42,28 @@ export function WideAngleFeed({
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 p-2">
         <div
           className="flex w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-lg"
           style={{ background: "#0a0f1a", border: "1px dashed #1e293b" }}
         >
           {connected && remoteVideos.length > 0 ? (
-            <div className="grid h-full w-full grid-cols-1 gap-1 p-2 sm:grid-cols-2">
+            <div
+              className={`grid w-full gap-1 p-1 content-start ${
+                remoteVideos.length === 1
+                  ? "grid-cols-1"
+                  : remoteVideos.length === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-3"
+              }`}
+            >
               {remoteVideos.map((video) => (
                 <RemoteVideo
                   key={video.identity}
                   track={video.mediaStreamTrack}
                   className="aspect-video w-full rounded-lg bg-slate-900"
                   label={videoLabels[video.identity] ?? video.identity}
+                  enableCV
                 />
               ))}
             </div>
