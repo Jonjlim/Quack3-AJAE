@@ -10,6 +10,7 @@ from app.ws.manager import manager
 from shared.schemas.telemetry import (
     AlertEvent,
     BiometricReading,
+    CameraStatusPayload,
     HelpRequestPayload,
     TelemetryEnvelope,
     TelemetryEventType,
@@ -71,6 +72,15 @@ async def patient_websocket(websocket: WebSocket, patient_id: str) -> None:
                         websocket,
                         {"status": "received", "alert_id": alert.alert_id},
                     )
+                elif envelope.type == TelemetryEventType.CAMERA_STATUS:
+                    camera_payload = CameraStatusPayload.model_validate(envelope.payload)
+                    patient = state_service.set_camera_enabled(
+                        camera_payload.patient_id,
+                        camera_payload.enabled,
+                    )
+                    if patient:
+                        await events.patient_update(patient)
+                    await manager.send_json(websocket, {"status": "received"})
             except Exception:
                 await manager.send_json(websocket, {"status": "error", "detail": "Invalid payload"})
     except WebSocketDisconnect:

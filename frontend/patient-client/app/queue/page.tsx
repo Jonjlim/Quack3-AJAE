@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AcuityLoad } from "../components/AcuityLoad";
 import { CameraToggle } from "../components/CameraToggle";
@@ -10,45 +10,112 @@ import {
   connectPatientSocket,
   getQueueStatus,
   isMockMode,
+  sendCameraStatus,
   sendHelpRequest,
 } from "@/lib/ws-client";
 import type { QueueStatus, TelemetryEnvelope } from "@shared/types/telemetry";
 
+const PATIENT_ID_KEY = "er-overwatch-patient-id";
+
+function resolvePatientId(searchParam: string | null): string {
+  if (searchParam) {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(PATIENT_ID_KEY, searchParam);
+    }
+    return searchParam;
+  }
+  if (typeof sessionStorage !== "undefined") {
+    const stored = sessionStorage.getItem(PATIENT_ID_KEY);
+    if (stored) return stored;
+  }
+  return MOCK_QUEUE_STATUS.patient_id;
+}
+
 function QueueContent() {
   const searchParams = useSearchParams();
-  const patientId = searchParams.get("patientId") ?? MOCK_QUEUE_STATUS.patient_id;
+  const patientId = resolvePatientId(searchParams.get("patientId"));
   const [queue, setQueue] = useState<QueueStatus>(MOCK_QUEUE_STATUS);
   const [helpSent, setHelpSent] = useState(false);
   const [wsConnected, setWsConnected] = useState(isMockMode());
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    getQueueStatus(patientId).then(setQueue).catch(() => setQueue(MOCK_QUEUE_STATUS));
+    setFetchError(null);
+    getQueueStatus(patientId)
+      .then(setQueue)
+      .catch((err) => {
+        if (isMockMode()) {
+          setQueue(MOCK_QUEUE_STATUS);
+        } else {
+          setFetchError(
+            err instanceof Error ? err.message : "Could not load queue status.",
+          );
+        }
+      });
+
     const ws = connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
       if (data.type === "QUEUE_UPDATE" && data.payload) {
         setQueue(data.payload);
+        setFetchError(null);
       }
     });
+    wsRef.current = ws;
+
     if (!ws) {
       setWsConnected(false);
       return;
     }
     ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => setWsConnected(false);
+    ws.onclose = () => {
+      setWsConnected(false);
+      wsRef.current = null;
+    };
     ws.onerror = () => setWsConnected(false);
-    return () => ws.close();
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
   }, [patientId]);
 
   function handleHelp() {
-    const ws = connectPatientSocket(patientId, () => undefined);
-    if (ws) {
-      ws.onopen = () => {
-        sendHelpRequest(ws, patientId);
-        setHelpSent(true);
-        ws.close();
-      };
-    } else {
+    if (isMockMode()) {
       setHelpSent(true);
       console.info("[mock] Help request sent for", patientId);
+      return;
+    }
+
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      sendHelpRequest(ws, patientId);
+      setHelpSent(true);
+      return;
+    }
+
+    if (ws?.readyState === WebSocket.CONNECTING) {
+      ws.addEventListener(
+        "open",
+        () => {
+          sendHelpRequest(ws, patientId);
+          setHelpSent(true);
+        },
+        { once: true },
+      );
+      return;
+    }
+
+    setFetchError("Not connected — wait for Live status, then try again.");
+  }
+
+  function notifyCameraStatus(enabled: boolean) {
+    if (isMockMode()) return;
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      sendCameraStatus(ws, patientId, enabled);
+      return;
+    }
+    if (ws?.readyState === WebSocket.CONNECTING) {
+      ws.addEventListener("open", () => sendCameraStatus(ws, patientId, enabled), { once: true });
     }
   }
 
@@ -82,8 +149,14 @@ function QueueContent() {
         </p>
       </header>
 
+      {fetchError && (
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="alert">
+          {fetchError}
+        </p>
+      )}
+
       <AcuityLoad data={queue.acuity_load ?? MOCK_ACUITY_LOAD} />
-      <CameraToggle patientId={patientId} />
+      <CameraToggle patientId={patientId} onCameraChange={notifyCameraStatus} />
       <HelpButton onHelp={handleHelp} disabled={helpSent} />
       {helpSent && (
         <p className="text-center text-sm font-medium text-red-600">

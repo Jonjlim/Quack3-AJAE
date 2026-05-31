@@ -241,6 +241,33 @@ class TestWebSockets:
             assert help_ack["payload"]["patient_id"] == "pat-001"
             assert status["alert_id"].startswith("alert-help-")
 
+    def test_patient_ws_camera_status_updates_nurse_grid(self, client: TestClient) -> None:
+        created = client.post("/api/v1/intake", json=INTAKE_BODY).json()
+        patient_id = created["patient_id"]
+
+        with client.websocket_connect("/ws/nurse") as nurse_ws:
+            nurse_ws.receive_json()  # initial snapshot
+
+            with client.websocket_connect(f"/ws/patient/{patient_id}") as patient_ws:
+                patient_ws.receive_json()  # initial QUEUE_UPDATE
+                patient_ws.send_json(
+                    {
+                        "version": "1.0",
+                        "type": "CAMERA_STATUS",
+                        "timestamp": "2026-05-30T18:22:00Z",
+                        "payload": {"patient_id": patient_id, "enabled": True},
+                    }
+                )
+                messages = [patient_ws.receive_json() for _ in range(3)]
+                status = next(m for m in messages if m.get("status") == "received")
+                assert status["status"] == "received"
+
+            update = nurse_ws.receive_json()
+            assert update["type"] == "PATIENT_UPDATE"
+            assert update["payload"]["patient_id"] == patient_id
+            assert update["payload"]["camera_enabled"] is True
+            assert update["payload"]["status"] == "STREAMING"
+
     def test_ai_ws_accepts_alert(self, client: TestClient) -> None:
         with client.websocket_connect("/ws/ai") as ws:
             ws.send_json(
