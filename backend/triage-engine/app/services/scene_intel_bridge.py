@@ -41,9 +41,9 @@ def _import_rppg():
         ) from exc
 
 
-def run_fall_detection(video_bytes: bytes) -> dict:
+def run_fall_detection(video_bytes: bytes, mime_type: str = "video/webm") -> dict:
     detect_fall = _import_fall_detector()
-    return detect_fall(video_bytes)
+    return detect_fall(video_bytes, mime_type)
 
 
 def run_rppg_analysis(video_bytes: bytes) -> dict:
