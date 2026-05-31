@@ -3,6 +3,7 @@ import type {
   AcuityLevel,
   AlertEvent,
   BiometricReading,
+  IntakeResponse,
   PatientRecord,
   TelemetryEnvelope,
 } from "@shared/types/telemetry";
@@ -12,6 +13,12 @@ export interface CheckInData {
   complaint: string;
   acuity: AcuityLevel;
   cameraOptIn: boolean;
+  displayName?: string;
+}
+
+export interface CheckInResult {
+  display_name: string;
+  patient_id: string;
 }
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
@@ -163,35 +170,67 @@ export function useTriageSocket() {
     );
   }, []);
 
-  const addPatient = useCallback((data: CheckInData): { display_name: string } => {
+  const addPatient = useCallback(async (data: CheckInData): Promise<CheckInResult> => {
     patientCountRef.current += 1;
     const num = patientCountRef.current;
-    const display_name = `P-${String(num).padStart(2, "0")}`;
+    const display_name = data.displayName?.trim() || `P-${String(num).padStart(2, "0")}`;
+
+    if (USE_MOCK) {
+      const newPatient: PatientRecord = {
+        patient_id: `pat-${String(num).padStart(3, "0")}`,
+        display_name,
+        queue_position: num,
+        acuity: data.acuity,
+        status: "WAITING",
+        wait_minutes: 0,
+        chief_complaint: data.complaint,
+        camera_enabled: data.cameraOptIn,
+        last_biometric: null,
+        created_at: new Date().toISOString(),
+      };
+      setPatients((prev) => [...prev, newPatient]);
+      return { display_name, patient_id: newPatient.patient_id };
+    }
+
+    const response = await fetch(`${API_BASE}/api/v1/intake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        display_name,
+        chief_complaint: data.complaint,
+        acuity_self_report: data.acuity,
+      }),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || `Check-in failed (${response.status})`);
+    }
+
+    const intake = (await response.json()) as IntakeResponse;
+    const patient_id = intake.patient_id;
+
+    if (data.cameraOptIn) {
+      await fetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patient_id)}/camera`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id, enabled: true }),
+      });
+    }
+
     const newPatient: PatientRecord = {
-      patient_id: `pat-${String(num).padStart(3, "0")}`,
+      patient_id,
       display_name,
-      queue_position: num,
+      queue_position: intake.queue_position,
       acuity: data.acuity,
       status: "WAITING",
       wait_minutes: 0,
       chief_complaint: data.complaint,
       camera_enabled: data.cameraOptIn,
       last_biometric: null,
-      created_at: new Date().toISOString(),
+      created_at: intake.created_at,
     };
     setPatients((prev) => [...prev, newPatient]);
-    if (!USE_MOCK) {
-      void fetch(`${API_BASE}/api/v1/intake`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          display_name,
-          chief_complaint: data.complaint,
-          acuity_self_report: data.acuity,
-        }),
-      });
-    }
-    return { display_name };
+    return { display_name, patient_id };
   }, []);
 
   const markStable = useCallback((patientId: string) => {

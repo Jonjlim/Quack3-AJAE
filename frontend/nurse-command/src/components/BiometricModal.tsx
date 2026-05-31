@@ -126,6 +126,7 @@ export function BiometricModal({
           style={{ background: "#111d33", borderBottom: "1px solid #1e293b" }}
         >
           <div>
+            <p className="mb-1 font-mono text-xs tracking-wide text-slate-500">{patient.patient_id}</p>
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold text-white">{patient.display_name}</span>
               <span
