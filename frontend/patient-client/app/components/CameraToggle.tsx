@@ -176,15 +176,19 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
         Share your camera so a nurse can assess you while you wait. Heart rate is
         estimated periodically from your video while the camera is on.
       </p>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`mt-4 aspect-video w-full rounded-xl bg-slate-900 object-cover ${
+      <div
+        className={`camera-feed-correct relative mt-4 aspect-video w-full overflow-hidden rounded-xl bg-slate-900 ${
           enabled ? "block" : "hidden"
         }`}
-      />
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="h-full w-full object-cover"
+        />
+      </div>
       <p className="mt-3 text-sm font-medium text-slate-700">{status}</p>
       <button
         type="button"

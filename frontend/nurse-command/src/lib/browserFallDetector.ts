@@ -1,23 +1,30 @@
-/** In-browser fall detection using MediaPipe PoseLandmarker (no server-side video upload). */
+/** In-browser fall / collapse detection using MediaPipe PoseLandmarker + temporal cues. */
 
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { drawMirroredFrame } from "./camera-orientation";
+import {
+  DISTRESS_STYLE,
+  extractPoseFeatures,
+  matchPoseTrackers,
+  PoseDistressTracker,
+  type DistressState,
+} from "./poseDistressClassifier";
 
 export interface FallDetectionEvent {
   confidence: number;
   danger_level: "medium" | "high";
+  phase: "falling" | "collapsed";
   coordinates?: { x: number; y: number };
   frame_timestamp?: number;
 }
 
 const WASM_PATH = "/mediapipe/wasm";
 const MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
-const FALL_COOLDOWN_MS = 8_000;
-// Normalized Y gap between shoulder midpoint and hip midpoint.
-// Standing: ~0.3+. Below this threshold = body is horizontal = fallen.
-const FALL_THRESHOLD = 0.12;
+const NUM_POSES = 4;
+const MAX_TRACKERS = 6;
 
 const CONNECTIONS: [number, number][] = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
@@ -26,23 +33,14 @@ const CONNECTIONS: [number, number][] = [
   [24, 26], [26, 28], [28, 30], [28, 32],
 ];
 
-function isFallen(lms: NormalizedLandmark[]): boolean {
-  if (lms.length < 25) return false;
-  const shoulderY = (lms[11].y + lms[12].y) / 2;
-  const hipY = (lms[23].y + lms[24].y) / 2;
-  // Y increases downward; standing → hipY significantly > shoulderY.
-  return hipY - shoulderY < FALL_THRESHOLD;
-}
-
-function drawSkeleton(canvas: HTMLCanvasElement, lms: NormalizedLandmark[], fallen: boolean): void {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const lineColor = fallen ? "#f87171" : "#22d3ee";
-  const dotColor = fallen ? "#fbbf24" : "#e879f9";
-
-  ctx.strokeStyle = lineColor;
+function drawSkeletonPose(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  lms: NormalizedLandmark[],
+  state: DistressState,
+): void {
+  const style = DISTRESS_STYLE[state];
+  ctx.strokeStyle = style.skeleton;
   ctx.lineWidth = 2.5;
   for (const [a, b] of CONNECTIONS) {
     if (!lms[a] || !lms[b]) continue;
@@ -52,7 +50,7 @@ function drawSkeleton(canvas: HTMLCanvasElement, lms: NormalizedLandmark[], fall
     ctx.stroke();
   }
 
-  ctx.fillStyle = dotColor;
+  ctx.fillStyle = style.dots;
   for (const lm of lms) {
     ctx.beginPath();
     ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 4, 0, Math.PI * 2);
@@ -60,13 +58,21 @@ function drawSkeleton(canvas: HTMLCanvasElement, lms: NormalizedLandmark[], fall
   }
 }
 
+function drawAllSkeletons(
+  canvas: HTMLCanvasElement,
+  poses: { lms: NormalizedLandmark[]; state: DistressState }[],
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const pose of poses) {
+    drawSkeletonPose(ctx, canvas, pose.lms, pose.state);
+  }
+}
+
 /**
- * Starts MediaPipe PoseLandmarker on `stream` and calls `onFall` when a fallen
- * pose is detected. Optionally draws a skeleton overlay on `overlayCanvas`.
- *
- * Returns { cleanup, ready } where:
- *   cleanup — stop detection and release resources
- *   ready   — resolves once the landmarker has loaded and the tick loop starts
+ * Starts MediaPipe PoseLandmarker on `stream` and calls `onFall` on rapid fall or collapse.
+ * Optionally draws a skeleton overlay on `overlayCanvas`.
  */
 export function createBrowserFallDetector(
   stream: MediaStream,
@@ -76,7 +82,10 @@ export function createBrowserFallDetector(
   let alive = true;
   let rafId: number | null = null;
   let landmarker: PoseLandmarker | null = null;
-  let lastAlertAt = 0;
+  const trackers: PoseDistressTracker[] = [];
+
+  const inferCanvas = document.createElement("canvas");
+  const inferCtx = inferCanvas.getContext("2d");
 
   const vid = document.createElement("video");
   vid.srcObject = stream;
@@ -86,23 +95,23 @@ export function createBrowserFallDetector(
 
   const ready = (async () => {
     const vision = await FilesetResolver.forVisionTasks(WASM_PATH);
-    // numPoses: 1 — camera device only needs to track the primary person for fall alerting.
-    // Multi-person boxes belong on the nurse feed, not here, to keep mobile perf healthy.
     try {
       landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
         runningMode: "VIDEO",
-        numPoses: 1,
+        numPoses: NUM_POSES,
       });
     } catch {
-      // GPU unavailable — fall back to CPU
       landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
         runningMode: "VIDEO",
-        numPoses: 1,
+        numPoses: NUM_POSES,
       });
     }
-    if (!alive) { landmarker.close(); return; }
+    if (!alive) {
+      landmarker.close();
+      return;
+    }
 
     const tick = () => {
       if (!alive || !landmarker) return;
@@ -114,25 +123,48 @@ export function createBrowserFallDetector(
           canvas.height = vid.videoHeight;
         }
 
-        const result = landmarker.detectForVideo(vid, performance.now());
+        if (!inferCtx || !vid.videoWidth || !vid.videoHeight) {
+          rafId = requestAnimationFrame(tick);
+          return;
+        }
+        inferCanvas.width = vid.videoWidth;
+        inferCanvas.height = vid.videoHeight;
+        drawMirroredFrame(inferCtx, vid, inferCanvas.width, inferCanvas.height);
 
-        if (result.landmarks.length > 0) {
-          const primary = result.landmarks[0];
-          const fallen = isFallen(primary);
-          if (canvas) drawSkeleton(canvas, primary, fallen);
+        const result = landmarker.detectForVideo(inferCanvas, performance.now());
+        const now = performance.now();
 
-          if (fallen && Date.now() - lastAlertAt > FALL_COOLDOWN_MS) {
-            lastAlertAt = Date.now();
+        const detections = result.landmarks
+          .map((lms) => {
+            const features = extractPoseFeatures(lms);
+            return features ? { lms, features } : null;
+          })
+          .filter((d): d is NonNullable<typeof d> => d != null);
+
+        const pairs = matchPoseTrackers(trackers, detections, MAX_TRACKERS);
+
+        const overlayPoses: { lms: NormalizedLandmark[]; state: DistressState }[] = [];
+
+        for (const { tracker, lms, features: feat } of pairs) {
+          const { state, confidence, shouldAlert } = tracker.update(feat, now);
+          overlayPoses.push({ lms, state });
+
+          if (shouldAlert) {
             onFall({
-              confidence: 0.87,
-              danger_level: "high",
+              confidence,
+              phase: state === "collapsed" ? "collapsed" : "falling",
+              danger_level: state === "collapsed" ? "high" : "medium",
               coordinates: {
-                x: Math.round(((primary[23].x + primary[24].x) / 2) * vid.videoWidth),
-                y: Math.round(((primary[23].y + primary[24].y) / 2) * vid.videoHeight),
+                x: Math.round(feat.centerX * vid.videoWidth),
+                y: Math.round(feat.centerY * vid.videoHeight),
               },
               frame_timestamp: vid.currentTime,
             });
           }
+        }
+
+        if (canvas && overlayPoses.length > 0) {
+          drawAllSkeletons(canvas, overlayPoses);
         } else if (canvas) {
           canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
         }
@@ -150,8 +182,8 @@ export function createBrowserFallDetector(
     landmarker = null;
     vid.pause();
     vid.srcObject = null;
+    trackers.length = 0;
   };
 
   return { cleanup, ready };
 }
-

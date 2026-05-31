@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Un-mirror video display only (no overlay canvas on patient preview). */
+.camera-feed-correct > video {
+  transform: scaleX(-1);
+}

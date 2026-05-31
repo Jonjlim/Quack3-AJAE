@@ -126,6 +126,7 @@ class LiveKitTokenRequest(BaseModel):
     room: str
     identity: str
     role: LiveKitRole
+    display_name: str | None = None
 
 
 class LiveKitTokenResponse(BaseModel):

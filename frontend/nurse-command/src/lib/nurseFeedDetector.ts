@@ -1,44 +1,29 @@
 /**
- * Nurse-feed CV: runs MediaPipe PoseLandmarker on a remote LiveKit video element
- * and draws coloured bounding boxes for each detected person.
- *
- * Optimisations vs the camera-device detector:
- *  - Frame skip: processes every 2nd frame (~30 fps effective) — boxes are visual-only
- *  - Downscale: inference runs on a 640-px-wide offscreen copy; display canvas is native res
- *  - numPoses: 4 — patient + nurse + up to 2 staff/visitors, realistic for an ER bay
+ * Room-camera feed CV: multi-person pose + temporal fall/collapse classification.
  */
 
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { drawMirroredFrame } from "./camera-orientation";
+import {
+  DISTRESS_LABEL,
+  DISTRESS_STYLE,
+  extractPoseFeatures,
+  matchPoseTrackers,
+  PoseDistressTracker,
+  type DistressState,
+} from "./poseDistressClassifier";
 
 const WASM_PATH = "/mediapipe/wasm";
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
-const NUM_POSES = 2;
-const FRAME_SKIP = 3;    // process every 3rd frame (~20 fps) — boxes are visual-only
-const INFER_WIDTH = 640; // full model at 640px is fast enough and multi-person accurate
+const NUM_POSES = 4;
+const MAX_TRACKERS = 6;
+const FRAME_SKIP = 2;
+const INFER_WIDTH = 640;
 
-// Must match the camera-device threshold so both views agree on "fallen"
-const FALL_THRESHOLD = 0.12;
-
-type PoseState = "safe" | "fallen";
-
-const STATE_STYLE: Record<PoseState, { stroke: string; fill: string; label: string }> = {
-  safe:   { stroke: "#22c55e", fill: "#22c55e18", label: "Safe" },
-  fallen: { stroke: "#ef4444", fill: "#ef444428", label: "FALLEN" },
-};
-
-// Key body landmark indices used for bounding-box computation.
-// Excludes hands/feet which can be noisy and extend the box unnecessarily.
 const BOX_LANDMARKS = [0, 11, 12, 13, 14, 23, 24, 25, 26, 27, 28];
-
-function classifyPose(lms: NormalizedLandmark[]): PoseState {
-  if (lms.length < 25) return "safe";
-  const shoulderY = (lms[11].y + lms[12].y) / 2;
-  const hipY = (lms[23].y + lms[24].y) / 2;
-  return hipY - shoulderY < FALL_THRESHOLD ? "fallen" : "safe";
-}
 
 function getBoundingBox(lms: NormalizedLandmark[]): { x: number; y: number; w: number; h: number } {
   const pts = BOX_LANDMARKS.map((i) => lms[i]).filter(Boolean);
@@ -48,7 +33,6 @@ function getBoundingBox(lms: NormalizedLandmark[]): { x: number; y: number; w: n
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  // Add padding so the box isn't too tight around the pose
   const padX = (maxX - minX) * 0.15;
   const padY = (maxY - minY) * 0.12;
   return {
@@ -61,7 +45,7 @@ function getBoundingBox(lms: NormalizedLandmark[]): { x: number; y: number; w: n
 
 function drawBoxes(
   canvas: HTMLCanvasElement,
-  poses: { lms: NormalizedLandmark[]; state: PoseState }[],
+  poses: { lms: NormalizedLandmark[]; state: DistressState }[],
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -72,24 +56,22 @@ function drawBoxes(
 
   for (const { lms, state } of poses) {
     const box = getBoundingBox(lms);
-    const style = STATE_STYLE[state];
+    const style = DISTRESS_STYLE[state];
+    const labelText = DISTRESS_LABEL[state];
 
     const bx = box.x * W;
     const by = box.y * H;
     const bw = box.w * W;
     const bh = box.h * H;
 
-    // Box fill + stroke
     ctx.strokeStyle = style.stroke;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = state === "safe" ? 2.5 : 3;
     ctx.fillStyle = style.fill;
     ctx.beginPath();
     ctx.roundRect(bx, by, bw, bh, 6);
     ctx.fill();
     ctx.stroke();
 
-    // State label — above the box, or below if too close to the top
-    const labelText = style.label;
     ctx.font = "bold 11px system-ui, sans-serif";
     const textW = ctx.measureText(labelText).width;
     const labelX = bx + 4;
@@ -102,25 +84,20 @@ function drawBoxes(
   }
 }
 
-/**
- * Attaches a pose-detection loop to an existing <video> element and draws
- * coloured bounding boxes on `overlayCanvas`.
- *
- * The caller is responsible for sizing and positioning `overlayCanvas` over the video.
- */
 export function createNurseFeedDetector(
   videoEl: HTMLVideoElement,
   overlayCanvas: HTMLCanvasElement,
+  onFall?: (detail: { confidence: number; state: DistressState }) => void,
 ): { cleanup: () => void; ready: Promise<void> } {
   let alive = true;
   let rafId: number | null = null;
   let landmarker: PoseLandmarker | null = null;
   let frameCount = 0;
+  const trackers: PoseDistressTracker[] = [];
 
-  // Persistent offscreen canvas for downscaled inference (avoids re-allocating each tick)
   const offscreen = document.createElement("canvas");
   offscreen.width = INFER_WIDTH;
-  offscreen.height = Math.round(INFER_WIDTH * (9 / 16)); // safe initial guess
+  offscreen.height = Math.round(INFER_WIDTH * (9 / 16));
   const offCtx = offscreen.getContext("2d");
 
   const ready = (async () => {
@@ -132,20 +109,21 @@ export function createNurseFeedDetector(
         numPoses: NUM_POSES,
       });
     } catch {
-      // GPU unavailable — fall back to CPU
       landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
         runningMode: "VIDEO",
         numPoses: NUM_POSES,
       });
     }
-    if (!alive) { landmarker.close(); return; }
+    if (!alive) {
+      landmarker.close();
+      return;
+    }
 
     const tick = () => {
       if (!alive || !landmarker) return;
       rafId = requestAnimationFrame(tick);
 
-      // Frame skip — visual boxes don't need 60 fps
       if (++frameCount % FRAME_SKIP !== 0) return;
 
       if (videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
@@ -153,7 +131,6 @@ export function createNurseFeedDetector(
       const vh = videoEl.videoHeight;
       if (!vw || !vh) return;
 
-      // Keep overlay canvas matched to the video element's current display size
       const dispW = videoEl.offsetWidth || vw;
       const dispH = videoEl.offsetHeight || vh;
       if (overlayCanvas.width !== dispW || overlayCanvas.height !== dispH) {
@@ -161,19 +138,36 @@ export function createNurseFeedDetector(
         overlayCanvas.height = dispH;
       }
 
-      // Downscale video into offscreen canvas for faster inference
       const inferH = Math.round(vh * (INFER_WIDTH / vw));
       if (offscreen.height !== inferH) offscreen.height = inferH;
-      offCtx?.drawImage(videoEl, 0, 0, INFER_WIDTH, inferH);
+      if (offCtx) {
+        drawMirroredFrame(offCtx, videoEl, INFER_WIDTH, inferH);
+      }
 
       const result = landmarker.detectForVideo(offscreen, performance.now());
+      const now = performance.now();
 
-      const poses = result.landmarks.map((lms) => ({
-        lms,
-        state: classifyPose(lms),
-      }));
+      const detections = result.landmarks
+        .map((lms) => {
+          const features = extractPoseFeatures(lms);
+          return features ? { lms, features } : null;
+        })
+        .filter((d): d is NonNullable<typeof d> => d != null);
 
-      drawBoxes(overlayCanvas, poses);
+      const pairs = matchPoseTrackers(trackers, detections, MAX_TRACKERS);
+
+      const drawList: { lms: NormalizedLandmark[]; state: DistressState }[] = [];
+
+      for (const { tracker, lms, features } of pairs) {
+        const { state, confidence, shouldAlert } = tracker.update(features, now);
+        drawList.push({ lms, state });
+
+        if (shouldAlert && onFall) {
+          onFall({ confidence, state });
+        }
+      }
+
+      drawBoxes(overlayCanvas, drawList);
     };
     tick();
   })();
@@ -183,6 +177,7 @@ export function createNurseFeedDetector(
     if (rafId !== null) cancelAnimationFrame(rafId);
     landmarker?.close();
     landmarker = null;
+    trackers.length = 0;
   };
 
   return { cleanup, ready };

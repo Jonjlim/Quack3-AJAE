@@ -4,7 +4,7 @@ import { PatientGrid } from "./components/PatientGrid";
 import { WideAngleFeed } from "./components/WideAngleFeed";
 import { useLiveKitRoom } from "./hooks/useLiveKitRoom";
 import { useTriageSocket } from "./hooks/useTriageSocket";
-import { BROAD_CAMERA_IDENTITY } from "./lib/livekit-constants";
+import { isRoomCameraIdentity, roomLabelFromIdentity } from "./lib/livekit-constants";
 import { CheckInTab } from "./pages/CheckInPage";
 
 type Tab = "dashboard" | "checkin";
@@ -63,21 +63,26 @@ export default function App() {
     addPatient,
   } = useTriageSocket();
 
-  const allowedVideoIdentities = useMemo(() => {
-    const ids = new Set(patients.map((p) => p.patient_id));
-    ids.add(BROAD_CAMERA_IDENTITY);
-    return ids;
-  }, [patients]);
+  const allowedPatientIds = useMemo(
+    () => new Set(patients.map((p) => p.patient_id)),
+    [patients],
+  );
+
+  const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01", allowedPatientIds);
 
   const videoLabels = useMemo(() => {
-    const labels: Record<string, string> = { [BROAD_CAMERA_IDENTITY]: "Room camera" };
+    const labels: Record<string, string> = {};
     for (const p of patients) {
       labels[p.patient_id] = p.display_name;
     }
+    for (const video of liveKit.remoteVideos) {
+      if (isRoomCameraIdentity(video.identity)) {
+        labels[video.identity] =
+          video.displayName || roomLabelFromIdentity(video.identity);
+      }
+    }
     return labels;
-  }, [patients]);
-
-  const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01", allowedVideoIdentities);
+  }, [patients, liveKit.remoteVideos]);
   const patientVideo = selectedPatient
     ? liveKit.getVideoForIdentity(selectedPatient.patient_id)
     : null;
@@ -162,11 +167,11 @@ export default function App() {
             <div className="min-w-0 flex-1">
               <WideAngleFeed
                 connected={liveKit.connected}
+                connecting={liveKit.connecting}
                 error={liveKit.error}
                 remoteVideos={liveKit.remoteVideos}
                 videoLabels={videoLabels}
-                onConnect={liveKit.connect}
-                onDisconnect={liveKit.disconnect}
+                onRetry={liveKit.connect}
               />
             </div>
           </>
