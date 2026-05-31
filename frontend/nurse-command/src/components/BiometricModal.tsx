@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Area,
   ComposedChart,
@@ -12,6 +12,7 @@ import {
 import type { AcuityLevel, BiometricReading, PatientRecord } from "@shared/types/telemetry";
 import type { RemoteVideoTrack } from "../hooks/useLiveKitRoom";
 import { RemoteVideo } from "./RemoteVideo";
+import { CasefileReportModal } from "./CasefileReportModal";
 
 interface BiometricModalProps {
   patient: PatientRecord | null;
@@ -77,6 +78,8 @@ export function BiometricModal({
   onEscalate,
   onMarkStable,
 }: BiometricModalProps) {
+  const [showCasefile, setShowCasefile] = useState(false);
+
   useEffect(() => {
     if (!patient) return;
     const handler = (e: KeyboardEvent) => {
@@ -289,6 +292,18 @@ export function BiometricModal({
           <div className="flex gap-3 pt-1">
             <button
               type="button"
+              onClick={() => setShowCasefile(true)}
+              className="flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: "#3b82f618",
+                color: "#60a5fa",
+                border: "1px solid #3b82f645",
+              }}
+            >
+              Case File
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 onEscalate(patient.patient_id);
                 onClose();
@@ -320,6 +335,15 @@ export function BiometricModal({
           </div>
         </div>
       </div>
+
+      {/* Casefile report modal */}
+      {showCasefile && (
+        <CasefileReportModal
+          patientId={patient.patient_id}
+          patientName={patient.display_name}
+          onClose={() => setShowCasefile(false)}
+        />
+      )}
     </div>
   );
 }

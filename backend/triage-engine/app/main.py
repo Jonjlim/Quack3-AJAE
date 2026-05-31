@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import intake, livekit_tokens, queue, rppg
+from app.routers import intake, livekit_tokens, queue, rppg, casefile
 from app.ws import nurse as ws_nurse
 
 
@@ -54,6 +54,7 @@ app.include_router(intake.router)
 app.include_router(queue.router)
 app.include_router(livekit_tokens.router)
 app.include_router(rppg.router)
+app.include_router(casefile.router)
 app.include_router(ws_nurse.router)
 
 

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AcuityLoad } from "../components/AcuityLoad";
 import { CameraToggle } from "../components/CameraToggle";
+import { CasefileChat } from "../components/CasefileChat";
 import { HelpButton } from "../components/HelpButton";
 import { MOCK_ACUITY_LOAD, MOCK_QUEUE_STATUS } from "@/lib/mock-data";
 import {
@@ -93,16 +94,19 @@ function QueueContent() {
     return <div className="p-8 text-center text-slate-600">Redirecting to sign in…</div>;
   }
 
+  // patientId is guaranteed non-null past this point (TS can't narrow in closures)
+  const pid: string = patientId;
+
   function handleHelp() {
     if (isMockMode()) {
       setHelpSent(true);
-      console.info("[mock] Help request sent for", patientId);
+      console.info("[mock] Help request sent for", pid);
       return;
     }
 
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
-      sendHelpRequest(ws, patientId);
+      sendHelpRequest(ws, pid);
       setHelpSent(true);
       return;
     }
@@ -111,7 +115,7 @@ function QueueContent() {
       ws.addEventListener(
         "open",
         () => {
-          sendHelpRequest(ws, patientId);
+          sendHelpRequest(ws, pid);
           setHelpSent(true);
         },
         { once: true },
@@ -126,11 +130,11 @@ function QueueContent() {
     if (isMockMode()) return;
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
-      sendCameraStatus(ws, patientId, enabled);
+      sendCameraStatus(ws, pid, enabled);
       return;
     }
     if (ws?.readyState === WebSocket.CONNECTING) {
-      ws.addEventListener("open", () => sendCameraStatus(ws, patientId, enabled), { once: true });
+      ws.addEventListener("open", () => sendCameraStatus(ws, pid, enabled), { once: true });
     }
   }
 
@@ -171,7 +175,8 @@ function QueueContent() {
       )}
 
       <AcuityLoad data={queue.acuity_load ?? MOCK_ACUITY_LOAD} />
-      <CameraToggle patientId={patientId} onCameraChange={notifyCameraStatus} />
+      <CasefileChat patientId={pid} />
+      <CameraToggle patientId={pid} onCameraChange={notifyCameraStatus} />
       <HelpButton onHelp={handleHelp} disabled={helpSent} />
       {helpSent && (
         <p className="text-center text-sm font-medium text-red-600">

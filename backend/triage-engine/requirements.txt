@@ -8,5 +8,7 @@ livekit-api>=0.8.0
 redis>=5.0.0
 httpx>=0.27.0
 pytest>=8.0.0
+google-genai>=1.0.0
+reportlab>=4.0.0
 # In-process rPPG (OpenCV / MediaPipe)
 -r ../rppg/requirements.txt

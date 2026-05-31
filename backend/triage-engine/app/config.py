@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     livekit_api_secret: str = "secret"
     livekit_url: str = "wss://your-project.livekit.cloud"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    gemini_api_key: str = ""
     testing: bool = False
 
 
