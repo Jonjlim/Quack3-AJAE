@@ -1,19 +1,25 @@
 """Heart rate estimation via remote photoplethysmography (rPPG).
 
-Uses MediaPipe Face Mesh (0.10.21 legacy API — migrate to Tasks post-hackathon)
-to extract forehead ROI, CHROM chrominance method, autocorrelation + FFT fusion,
-and analytic confidence intervals.
+Uses MediaPipe FaceLandmarker (Tasks API) to extract forehead ROI,
+CHROM chrominance method, autocorrelation + FFT fusion, and analytic
+confidence intervals.
 """
 
 import base64
 import os
 import tempfile
+from pathlib import Path
 
 # pyrefly: ignore [missing-import]
 import cv2
 import mediapipe as mp
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision as mp_vision
 import numpy as np
 from scipy.signal import butter, filtfilt
+
+# Path to the pre-downloaded FaceLandmarker model (bundled alongside this file)
+_MODEL_PATH = str(Path(__file__).resolve().parent / "face_landmarker.task")
 
 # MediaPipe forehead landmark indices (upper forehead region)
 _FOREHEAD_LANDMARKS = [10, 67, 69, 104, 108, 109, 151, 299, 337, 338]
@@ -79,13 +85,16 @@ def _extract_roi_series(
     frames: list[np.ndarray],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, float, list[float]]:
     """Return RGB means per frame, face coverage, motion score, landmark centroids."""
-    face_mesh = mp.solutions.face_mesh.FaceMesh(
-        static_image_mode=False,
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
+    base_options = mp_python.BaseOptions(model_asset_path=_MODEL_PATH)
+    options = mp_vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        num_faces=1,
+        min_face_detection_confidence=0.5,
+        min_face_presence_confidence=0.5,
         min_tracking_confidence=0.5,
+        running_mode=mp_vision.RunningMode.IMAGE,
     )
+    landmarker = mp_vision.FaceLandmarker.create_from_options(options)
 
     r_vals: list[float] = []
     g_vals: list[float] = []
@@ -99,19 +108,20 @@ def _extract_roi_series(
 
     for frame in frames:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = face_mesh.process(rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        results = landmarker.detect(mp_image)
 
-        if not results.multi_face_landmarks:
+        if not results.face_landmarks:
             centroids.append(None)
             continue
 
         detected += 1
-        landmarks = results.multi_face_landmarks[0]
+        landmarks = results.face_landmarks[0]
         h, w = frame.shape[:2]
 
         pts = np.array(
             [
-                [int(landmarks.landmark[i].x * w), int(landmarks.landmark[i].y * h)]
+                [int(landmarks[i].x * w), int(landmarks[i].y * h)]
                 for i in _FOREHEAD_LANDMARKS
             ],
             dtype=np.int32,
@@ -134,7 +144,7 @@ def _extract_roi_series(
             displacements.append(float(np.linalg.norm(centroid - prev_centroid) / norm))
         prev_centroid = centroid
 
-    face_mesh.close()
+    landmarker.close()
 
     face_coverage = detected / len(frames) if frames else 0.0
     motion_score = float(np.mean(displacements)) if displacements else 0.0

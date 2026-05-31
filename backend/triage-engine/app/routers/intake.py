@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from app.deps.auth import require_nurse
 from app.firebase_app import FirebaseUser
 from app.services.events import EventBus
+from app.services.gemini_triage import suggest_acuity
 from app.services.state import state_service
 from app.ws.manager import manager
 from shared.schemas.telemetry import (
@@ -28,14 +29,22 @@ async def create_intake(
     patient_id = f"pat-{uuid.uuid4().hex[:6]}"
     now = datetime.now(timezone.utc)
 
+    # Gemini provides a clinical observation note only — acuity is set by the human nurse.
+    gemini = suggest_acuity(body.chief_complaint)
+    triage_reasoning = gemini.get("analysis") or None
+
+    # Acuity defaults to URGENT until a nurse overrides it at the bedside.
+    acuity = body.acuity_self_report or AcuityLevel.URGENT
+
     patient = PatientRecord(
         patient_id=patient_id,
         display_name=body.display_name,
         queue_position=1,
-        acuity=body.acuity_self_report or AcuityLevel.URGENT,
+        acuity=acuity,
         status=PatientStatus.WAITING,
         wait_minutes=0,
         chief_complaint=body.chief_complaint,
+        triage_reasoning=triage_reasoning,
         camera_enabled=False,
         last_biometric=None,
         created_at=now,

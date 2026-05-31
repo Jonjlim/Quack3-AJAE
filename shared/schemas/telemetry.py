@@ -84,6 +84,7 @@ class PatientRecord(BaseModel):
     status: PatientStatus
     wait_minutes: int = Field(ge=0)
     chief_complaint: str
+    triage_reasoning: str | None = None
     camera_enabled: bool = False
     last_biometric: BiometricReading | None = None
     created_at: datetime

@@ -77,3 +77,9 @@ frontend/patient-client/certificates/
 .turbo/
 
 package-lock.json
+
+# MediaPipe model files (downloaded locally)
+*.task
+
+# Service logs
+logs/
