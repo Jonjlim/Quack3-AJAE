@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://eroverwatch:eroverwatch@localhost:5432/eroverwatch"
     redis_url: str = "redis://localhost:6379/0"
+    triage_sqlite_path: str = ""
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "secret"
     livekit_url: str = "wss://your-project.livekit.cloud"

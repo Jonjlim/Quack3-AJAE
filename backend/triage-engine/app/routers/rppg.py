@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -14,6 +15,8 @@ from shared.schemas.telemetry import (
     RppgAnalysisResult,
     SceneIntelRppgResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["rppg"])
 events = EventBus(manager, state_service)
@@ -53,10 +56,16 @@ async def analyze_rppg(
     alert = None
     broadcast = False
 
-    should_broadcast = (
-        analysis.heart_rate_bpm is not None
-        and analysis.measurement_status != "unreliable"
-        and analysis.confidence >= 0.5
+    should_broadcast = analysis.heart_rate_bpm is not None
+
+    logger.info(
+        "rPPG[%s] hr=%.1f status=%s conf=%.2f broadcast=%s error=%s",
+        patient_id,
+        analysis.heart_rate_bpm or 0,
+        analysis.measurement_status,
+        analysis.confidence,
+        should_broadcast,
+        analysis.error,
     )
 
     if should_broadcast:

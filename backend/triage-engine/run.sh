@@ -2,7 +2,7 @@
 # Run triage-engine from repo root so shared/ imports resolve.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-export PYTHONPATH="$ROOT"
+export PYTHONPATH="$ROOT:$ROOT/backend/rppg"
 cd "$ROOT/backend/triage-engine"
 if [[ -x ".venv/bin/python3.11" ]]; then
   PYTHON=".venv/bin/python3.11"
