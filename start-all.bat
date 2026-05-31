@@ -94,18 +94,24 @@ if "%SKIP_INSTALL%"=="0" (
     echo.
 )
 
+:: ── Create logs directory ───────────────────────────────────
+set "LOGDIR=%ROOT%\logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+
 :: ── Start all services in separate windows ─────────────────
-::    Using /D to set working directory and /k to keep windows open
+::    Each service shows stdout+stderr in its window (cmd /k keeps it open)
+::    stderr is merged into stdout so all errors are visible
 
 echo [start-all] Starting nurse-command frontend on http://localhost:5173
-start "nurse-command [port 5173]" /D "%ROOT%\frontend\nurse-command" cmd /k npm run dev
+start "nurse-command [port 5173]" /D "%ROOT%\frontend\nurse-command" cmd /k "npm run dev 2>&1"
 
 echo [start-all] Starting patient-client frontend on http://localhost:3000
-start "patient-client [port 3000]" /D "%ROOT%\frontend\patient-client" cmd /k npm run dev
+start "patient-client [port 3000]" /D "%ROOT%\frontend\patient-client" cmd /k "npm run dev 2>&1"
 
 echo [start-all] Starting triage-engine backend on http://localhost:8000
 set "PYTHONPATH=%ROOT%"
-start "triage-engine [port 8000]" /D "%ROOT%\backend\triage-engine" cmd /k "%VENV_DIR%\Scripts\activate.bat" ^&^& python -m uvicorn app.main:app --reload --port 8000
+start "triage-engine [port 8000]" /D "%ROOT%\backend\triage-engine" cmd /V:ON /k "set PYTHONPATH=%ROOT%&& "%VENV_DIR%\Scripts\activate.bat" && python -m uvicorn app.main:app --reload --port 8000 2>&1"
+
 
 :: ── Summary ────────────────────────────────────────────────
 echo.
@@ -117,7 +123,7 @@ echo   nurse-command    -^>  http://localhost:5173
 echo   patient-client   -^>  http://localhost:3000
 echo   triage-engine    -^>  http://localhost:8000
 echo.
-echo   Each service runs in its own window.
+echo   Each service shows stdout+stderr in its window.
 echo   Close those windows to stop individual services.
 echo  ===================================================
 echo.
