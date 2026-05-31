@@ -23,24 +23,39 @@ _HZ_LOW = _BPM_LOW / 60.0    # 0.7 Hz
 _HZ_HIGH = _BPM_HIGH / 60.0  # 4.0 Hz
 
 
+def _video_suffix(video_bytes: bytes) -> str:
+    """Pick a temp-file suffix so OpenCV can decode browser MediaRecorder output."""
+    if len(video_bytes) >= 4 and video_bytes[:4] == b"\x1aE\xdf\xa3":
+        return ".webm"
+    if len(video_bytes) >= 8 and video_bytes[4:8] == b"ftyp":
+        return ".mp4"
+    if video_bytes[:3] == b"ID3" or video_bytes[:2] == b"\xff\xfb":
+        return ".mp3"
+    return ".webm"
+
+
 def _decode_video(video_b64):
     """Decode a base64-encoded video into a list of BGR frames and the FPS.
 
     Args:
-        video_b64: Base64-encoded video string.
+        video_b64: Base64-encoded video string (webm or mp4 from browser uploads).
 
     Returns:
         Tuple of (frames list[np.ndarray], fps float).
     """
     video_bytes = base64.b64decode(video_b64)
+    suffix = _video_suffix(video_bytes)
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
     try:
         tmp.write(video_bytes)
         tmp.close()
 
         cap = cv2.VideoCapture(tmp.name)
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        if not cap.isOpened():
+            raise RuntimeError(f"Could not open uploaded video ({suffix})")
+
+        reported_fps = cap.get(cv2.CAP_PROP_FPS)
         frames = []
         while True:
             ret, frame = cap.read()
@@ -48,6 +63,14 @@ def _decode_video(video_b64):
                 break
             frames.append(frame)
         cap.release()
+
+        if reported_fps and reported_fps >= 1.0:
+            fps = float(reported_fps)
+        elif frames:
+            # WebM from MediaRecorder often reports fps=0; assume ~5s clips from the client.
+            fps = max(len(frames) / 5.0, 24.0)
+        else:
+            fps = 30.0
     finally:
         os.unlink(tmp.name)
 
@@ -190,7 +213,7 @@ def detect_rppg(video):
     try:
         frames, fps = _decode_video(video)
 
-        if len(frames) < 30:
+        if len(frames) < 10:
             return {
                 "heart_rate_bpm": None,
                 "confidence": 0.0,
@@ -200,7 +223,8 @@ def detect_rppg(video):
 
         signal = _extract_forehead_signal(frames, fps)
 
-        if len(signal) < 30:
+        min_samples = min(30, max(10, len(frames) // 2))
+        if len(signal) < min_samples:
             return {
                 "heart_rate_bpm": None,
                 "confidence": 0.0,
@@ -208,7 +232,9 @@ def detect_rppg(video):
                 "error": "Could not detect face in enough frames",
             }
 
-        filtered = _bandpass_filter(signal, fps)
+        duration_s = len(frames) / fps if fps > 0 else 5.0
+        signal_fps = len(signal) / duration_s if duration_s > 0 else fps
+        filtered = _bandpass_filter(signal, signal_fps)
         bpm = _estimate_hr(filtered, fps)
         quality, confidence = _assess_quality(filtered)
 

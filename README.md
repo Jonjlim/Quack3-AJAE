@@ -43,7 +43,7 @@ cp .env.example .env
 ```bash
 cd backend/triage-engine
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt   # includes scene-intel (rPPG) dependencies
 ./run.sh
 ```
 

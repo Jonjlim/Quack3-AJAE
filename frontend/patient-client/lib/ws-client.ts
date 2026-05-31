@@ -95,6 +95,21 @@ export function sendCameraStatus(ws: WebSocket, patientId: string, enabled: bool
   ws.send(JSON.stringify(envelope));
 }
 
+/** REST opt-in so rPPG is allowed before the first clip (avoids WebSocket race). */
+export async function setCameraEnabled(patientId: string, enabled: boolean): Promise<void> {
+  if (USE_MOCK) return;
+
+  const response = await fetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patientId)}/camera`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ patient_id: patientId, enabled }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || `Camera status failed (${response.status})`);
+  }
+}
+
 export function isMockMode(): boolean {
   return USE_MOCK;
 }
