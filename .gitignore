@@ -72,3 +72,5 @@ out/
 # Docker volumes
 postgres_data/
 redis_data/
+
+package-lock.json
