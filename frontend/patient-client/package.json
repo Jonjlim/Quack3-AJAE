@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "node scripts/dev.mjs",
+    "dev:tunnel": "node scripts/dev-tunnel.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
