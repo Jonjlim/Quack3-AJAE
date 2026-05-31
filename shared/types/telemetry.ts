@@ -34,8 +34,11 @@ export type TelemetryEventType =
 export interface BiometricReading {
   patient_id: string;
   heart_rate_bpm: number | null;
+  heart_rate_bpm_low?: number | null;
+  heart_rate_bpm_high?: number | null;
   respiratory_rate_bpm: number | null;
   confidence: number;
+  measurement_status?: "reliable" | "estimated" | "unreliable" | null;
   source: "rppg" | "manual";
   recorded_at: string;
 }
@@ -137,5 +140,30 @@ export interface CameraStatusPayload {
 
 export interface DemoFallTriggerResponse {
   alert: AlertEvent;
+  broadcast: boolean;
+}
+
+export interface RppgQualityMetrics {
+  face_coverage: number;
+  motion_score: number;
+  peak_prominence: number;
+  chrom_fft_agreement_bpm: number | null;
+}
+
+export interface RppgAnalysisResult {
+  heart_rate_bpm: number | null;
+  heart_rate_bpm_low?: number | null;
+  heart_rate_bpm_high?: number | null;
+  confidence: number;
+  signal_quality: "good" | "fair" | "poor";
+  measurement_status: "reliable" | "estimated" | "unreliable";
+  quality_metrics?: RppgQualityMetrics | null;
+  error: string | null;
+}
+
+export interface SceneIntelRppgResponse {
+  analysis: RppgAnalysisResult;
+  biometric: BiometricReading | null;
+  alert: AlertEvent | null;
   broadcast: boolean;
 }

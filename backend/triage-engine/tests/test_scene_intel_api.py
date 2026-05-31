@@ -2,10 +2,29 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 from shared.schemas.telemetry import SceneIntelFallResponse, SceneIntelRppgResponse
+
+
+def _reliable_rppg(**overrides: object) -> dict:
+    base = {
+        "heart_rate_bpm": 88.5,
+        "heart_rate_bpm_low": 82.0,
+        "heart_rate_bpm_high": 95.0,
+        "confidence": 0.9,
+        "signal_quality": "good",
+        "measurement_status": "reliable",
+        "quality_metrics": {
+            "face_coverage": 0.92,
+            "motion_score": 0.08,
+            "peak_prominence": 0.75,
+            "chrom_fft_agreement_bpm": 2.0,
+        },
+        "error": None,
+    }
+    base.update(overrides)
+    return base
 
 
 class TestSceneIntelFallDetection:
@@ -67,12 +86,7 @@ class TestSceneIntelFallDetection:
 class TestSceneIntelRppg:
     @patch("app.routers.scene_intel.run_rppg_analysis")
     def test_rppg_applies_biometric(self, mock_run: MagicMock, client: TestClient) -> None:
-        mock_run.return_value = {
-            "heart_rate_bpm": 88.5,
-            "confidence": 0.9,
-            "signal_quality": "good",
-            "error": None,
-        }
+        mock_run.return_value = _reliable_rppg()
         response = client.post(
             "/api/v1/scene-intel/rppg",
             data={"patient_id": "pat-002"},
@@ -81,7 +95,10 @@ class TestSceneIntelRppg:
         assert response.status_code == 200
         parsed = SceneIntelRppgResponse.model_validate(response.json())
         assert parsed.analysis.heart_rate_bpm == 88.5
+        assert parsed.analysis.heart_rate_bpm_low == 82.0
         assert parsed.biometric is not None
+        assert parsed.biometric.heart_rate_bpm_low == 82.0
+        assert parsed.biometric.measurement_status == "reliable"
         assert parsed.biometric.patient_id == "pat-002"
         assert parsed.broadcast is True
 
@@ -89,8 +106,12 @@ class TestSceneIntelRppg:
     def test_rppg_no_face_skips_biometric(self, mock_run: MagicMock, client: TestClient) -> None:
         mock_run.return_value = {
             "heart_rate_bpm": None,
+            "heart_rate_bpm_low": None,
+            "heart_rate_bpm_high": None,
             "confidence": 0.0,
             "signal_quality": "poor",
+            "measurement_status": "unreliable",
+            "quality_metrics": None,
             "error": "Could not detect face in enough frames",
         }
         response = client.post(
@@ -115,12 +136,7 @@ class TestSceneIntelRppg:
     def test_rppg_auto_enables_camera_when_opted_in_via_upload(
         self, mock_run: MagicMock, client: TestClient
     ) -> None:
-        mock_run.return_value = {
-            "heart_rate_bpm": 72.0,
-            "confidence": 0.8,
-            "signal_quality": "good",
-            "error": None,
-        }
+        mock_run.return_value = _reliable_rppg(heart_rate_bpm=72.0, heart_rate_bpm_low=68.0, heart_rate_bpm_high=76.0, confidence=0.8)
         response = client.post(
             "/api/v1/scene-intel/rppg",
             data={"patient_id": "pat-001"},
@@ -131,3 +147,22 @@ class TestSceneIntelRppg:
         assert parsed.biometric is not None
         patient = next(p for p in client.get("/api/v1/patients").json() if p["patient_id"] == "pat-001")
         assert patient["camera_enabled"] is True
+
+    @patch("app.routers.scene_intel.run_rppg_analysis")
+    def test_rppg_unreliable_skips_biometric(self, mock_run: MagicMock, client: TestClient) -> None:
+        mock_run.return_value = _reliable_rppg(
+            heart_rate_bpm=110.0,
+            confidence=0.35,
+            measurement_status="unreliable",
+            signal_quality="poor",
+        )
+        response = client.post(
+            "/api/v1/scene-intel/rppg",
+            data={"patient_id": "pat-002"},
+            files={"video": ("face.mp4", b"fake-video-bytes", "video/mp4")},
+        )
+        assert response.status_code == 200
+        parsed = SceneIntelRppgResponse.model_validate(response.json())
+        assert parsed.analysis.heart_rate_bpm == 110.0
+        assert parsed.biometric is None
+        assert parsed.broadcast is False

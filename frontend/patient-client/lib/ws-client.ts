@@ -95,7 +95,7 @@ export function sendCameraStatus(ws: WebSocket, patientId: string, enabled: bool
 export async function setCameraEnabled(patientId: string, enabled: boolean): Promise<void> {
   if (USE_MOCK) return;
 
-  const response = await fetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patientId)}/camera`, {
+  const response = await fetch(`${getApiBase()}/api/v1/patients/${encodeURIComponent(patientId)}/camera`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ patient_id: patientId, enabled }),

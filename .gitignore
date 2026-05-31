@@ -66,6 +66,7 @@ node_modules/
 .next/
 dist/
 out/
+frontend/patient-client/certificates/
 *.tsbuildinfo
 .turbo/
 
