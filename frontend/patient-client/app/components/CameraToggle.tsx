@@ -1,6 +1,7 @@
 "use client";
 
 import type { LiveKitTokenResponse } from "@shared/types/telemetry";
+import { useRppgSampler } from "@/lib/useRppgSampler";
 import {
   createLocalVideoTrack,
   Room,
@@ -17,12 +18,30 @@ interface CameraToggleProps {
 export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChange }: CameraToggleProps) {
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string>("Camera off");
+  const [samplingTrack, setSamplingTrack] = useState<MediaStreamTrack | null>(null);
   const roomRef = useRef<Room | null>(null);
   const videoTrackRef = useRef<LocalVideoTrack | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const identity = useMemo(() => patientId, [patientId]);
   const roomName = useMemo(() => room, [room]);
+
+  useRppgSampler({
+    patientId,
+    track: samplingTrack,
+    enabled,
+    onSample: ({ reading, analysis }) => {
+      if (reading?.heart_rate_bpm != null) {
+        setStatus(`Streaming · HR ${Math.round(reading.heart_rate_bpm)} bpm`);
+        return;
+      }
+      if (analysis.error) {
+        setStatus("Streaming · keep face visible for vitals");
+        return;
+      }
+      setStatus("Streaming to triage nurse");
+    },
+  });
 
   const stopStream = useCallback(async () => {
     const track = videoTrackRef.current;
@@ -37,6 +56,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       roomRef.current = null;
     }
     setEnabled(false);
+    setSamplingTrack(null);
     setStatus("Camera off");
     onCameraChange?.(false);
   }, [onCameraChange]);
@@ -76,9 +96,10 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       videoTrackRef.current = videoTrack;
       await lkRoom.localParticipant.publishTrack(videoTrack);
 
-      setEnabled(true);
-      setStatus("Streaming to triage nurse");
       onCameraChange?.(true);
+      setSamplingTrack(videoTrack.mediaStreamTrack);
+      setEnabled(true);
+      setStatus("Streaming to triage nurse · measuring vitals");
 
       requestAnimationFrame(() => {
         if (videoRef.current) {
@@ -89,7 +110,7 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
       await stopStream();
       onCameraChange?.(false);
       setStatus(
-        "Connection failed — ensure LiveKit is running (docker compose up -d), then retry",
+        "Connection failed — check LiveKit Cloud credentials and retry",
       );
     }
   }, [enabled, identity, onCameraChange, roomName, stopStream]);
@@ -98,8 +119,8 @@ export function CameraToggle({ patientId, room = "er-waiting-room", onCameraChan
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-slate-900">Remote Evaluation</h3>
       <p className="mt-1 text-sm text-slate-500">
-        Share your camera so a nurse can assess you while you wait. Requires LiveKit
-        running (<code className="text-xs">docker compose up -d</code>).
+        Share your camera so a nurse can assess you while you wait. Heart rate is
+        estimated periodically from your video while the camera is on.
       </p>
       <video
         ref={videoRef}

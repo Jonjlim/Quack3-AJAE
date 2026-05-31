@@ -31,11 +31,11 @@ Demo playbook: [`docs/DEMO.md`](docs/DEMO.md)
 
 ## Quick Start
 
-### 1. Infrastructure
+### 1. Environment
 
 ```bash
 cp .env.example .env
-docker compose up -d
+# Fill in LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL from your LiveKit Cloud project
 ```
 
 ### 2. Triage Engine (Architect 3)
