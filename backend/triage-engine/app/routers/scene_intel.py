@@ -41,8 +41,9 @@ async def analyze_fall(video: UploadFile = File(...)) -> SceneIntelFallResponse:
     if not video_bytes:
         raise HTTPException(status_code=400, detail="Empty video upload")
 
+    mime_type = video.content_type or "video/webm"
     try:
-        raw = await asyncio.to_thread(run_fall_detection, video_bytes)
+        raw = await asyncio.to_thread(run_fall_detection, video_bytes, mime_type)
     except SceneIntelUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RuntimeError as exc:

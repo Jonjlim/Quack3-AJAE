@@ -58,15 +58,16 @@ def _parse_response(raw):
         return dict(_DEFAULT_RESULT)
 
 
-def detect_fall(video):
+def detect_fall(video, mime_type="video/webm"):
     """Detect falls in a 5-second video clip.
 
     Args:
-        video: Raw video bytes (e.g. mp4).
+        video: Raw video bytes.
+        mime_type: MIME type of the video (e.g. 'video/webm', 'video/mp4').
 
     Returns:
         dict with keys: fall_detected, confidence, danger_level,
         coordinates, frame_timestamp.
     """
-    raw = query_gemini_video(_PROMPT, video)
+    raw = query_gemini_video(_PROMPT, video, mime_type=mime_type)
     return _parse_response(raw)
