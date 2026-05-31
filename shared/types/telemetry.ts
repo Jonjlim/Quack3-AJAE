@@ -186,3 +186,33 @@ export interface SceneIntelRppgResponse {
   alert: AlertEvent | null;
   broadcast: boolean;
 }
+
+// ── Gemini Case File ─────────────────────────────────────────────────────────
+
+/** Single chat turn between patient and Gemini. */
+export interface CasefileMessage {
+  role: "patient" | "gemini";
+  content: string;
+  timestamp: string;
+}
+
+/** Full conversation history for one patient. */
+export interface CasefileConversation {
+  patient_id: string;
+  messages: CasefileMessage[];
+  started_at: string | null;
+}
+
+/** Response from a single chat turn. */
+export interface CasefileChatResponse {
+  response: string;
+  transcript: string;
+  message_count: number;
+}
+
+/** Generated case-file report. */
+export interface CasefileReportResponse {
+  patient_id: string;
+  report_markdown: string;
+  generated_at: string;
+}

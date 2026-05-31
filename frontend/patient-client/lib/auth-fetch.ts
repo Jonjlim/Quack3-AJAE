@@ -1,8 +1,11 @@
 import { getIdToken, isFirebaseAuthEnabled } from "@/lib/firebase";
 
+const DEFAULT_TIMEOUT_MS = 20_000;
+
 export async function authFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<Response> {
   const headers = new Headers(init?.headers);
   if (isFirebaseAuthEnabled()) {
@@ -11,7 +14,20 @@ export async function authFetch(
       headers.set("Authorization", `Bearer ${token}`);
     }
   }
-  return fetch(input, { ...init, headers });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, headers, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Request timed out — the triage server may be busy. Try again in a few seconds.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function wsUrlWithToken(baseUrl: string): Promise<string> {

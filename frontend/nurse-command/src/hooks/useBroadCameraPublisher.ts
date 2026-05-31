@@ -16,6 +16,45 @@ import {
 export type BroadCameraStatus = "starting" | "live" | "replaced" | "error" | "idle";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const ROOM_CAMERA_RESOLUTION = { width: 1280, height: 720 } as const;
+const ROOM_CAMERA_FRAME_RATE = 30;
+
+async function createRoomCameraTrack(): Promise<LocalVideoTrack> {
+  const base = {
+    resolution: ROOM_CAMERA_RESOLUTION,
+    frameRate: ROOM_CAMERA_FRAME_RATE,
+  };
+  const attempts: Array<{ facingMode?: "environment" | "user" }> = [
+    { facingMode: "environment" },
+    { facingMode: "user" },
+    {},
+  ];
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      return await createLocalVideoTrack({ ...base, ...attempt });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Could not open camera");
+}
+
+function formatCameraError(err: unknown): string {
+  const message = err instanceof Error ? err.message : "Failed to start camera feed";
+  if (message.toLowerCase().includes("permission") || message.includes("NotAllowed")) {
+    return "Camera permission denied — allow camera access in browser settings";
+  }
+  if (message.includes("NotFound") || message.includes("DevicesNotFound")) {
+    return "No camera found — use a phone/tablet with a rear camera for the room feed";
+  }
+  if (message.includes("Could not obtain LiveKit token")) {
+    return "Could not reach triage server — sign in and check backend is running";
+  }
+  return message;
+}
 
 export function useBroadCameraPublisher(roomLabel: string | null) {
   const [status, setStatus] = useState<BroadCameraStatus>("idle");
@@ -79,10 +118,7 @@ export function useBroadCameraPublisher(roomLabel: string | null) {
 
       await lkRoom.connect(tokenData.url, tokenData.token);
 
-      const videoTrack = await createLocalVideoTrack({
-        facingMode: "environment",
-        resolution: { width: 1280, height: 720 },
-      });
+      const videoTrack = await createRoomCameraTrack();
       videoTrackRef.current = videoTrack;
       await lkRoom.localParticipant.publishTrack(videoTrack);
       setStream(new MediaStream([videoTrack.mediaStreamTrack]));
@@ -91,7 +127,7 @@ export function useBroadCameraPublisher(roomLabel: string | null) {
     } catch (err) {
       await cleanup();
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Failed to start camera feed");
+      setErrorMessage(formatCameraError(err));
     }
   }, [cleanup, roomLabel]);
 

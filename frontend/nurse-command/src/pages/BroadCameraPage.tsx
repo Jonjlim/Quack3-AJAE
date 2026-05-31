@@ -15,6 +15,13 @@ function readStoredRoomName(): string {
   return sessionStorage.getItem(ROOM_NAME_KEY)?.trim() ?? "";
 }
 
+const SETUP_TIPS = [
+  "Use the rear camera and clean the lens before judging.",
+  "Place the device high in a corner, angled down at the demo fall zone.",
+  "Keep the fall zone bright and avoid backlighting from windows.",
+  "Frame full bodies, not just faces — MediaPipe needs shoulders and hips visible.",
+];
+
 function StatusIndicator({ live }: { live: boolean }) {
   return (
     <span
@@ -66,6 +73,9 @@ export default function BroadCameraPage() {
           ER-OVERWATCH
         </p>
         <h1 className="mt-2 text-2xl font-bold">Room Camera</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Sign in with Google first. On a laptop, the front camera is used if no rear camera exists.
+        </p>
 
         {isSetup ? (
           <div className="mt-6 flex flex-col items-stretch gap-4 text-left">
@@ -118,8 +128,8 @@ export default function BroadCameraPage() {
                   )}
                 </div>
                 <p className="text-sm text-slate-400">
-                  Fall detection runs on this device. Nurses see &quot;{activeRoomName}&quot; on
-                  the wide-angle feed.
+                  Publishing 720p room video. Fall detection runs on this device. Nurses see
+                  &quot;{activeRoomName}&quot; on the wide-angle feed.
                 </p>
                 <div className="relative w-full overflow-hidden rounded-xl bg-black">
                   <div className="camera-feed-correct relative w-full">
@@ -149,7 +159,9 @@ export default function BroadCameraPage() {
             {isStarting && (
               <>
                 <p className="text-xl font-semibold text-blue-300">Starting camera…</p>
-                <p className="text-sm text-slate-400">Connecting to LiveKit for {activeRoomName}.</p>
+                <p className="text-sm text-slate-400">
+                  Opening the camera at 720p and connecting to LiveKit for {activeRoomName}.
+                </p>
               </>
             )}
 
@@ -202,6 +214,20 @@ export default function BroadCameraPage() {
           </div>
         )}
       </div>
+
+      <section className="mt-5 w-full max-w-lg rounded-xl border border-slate-800 bg-slate-900/70 p-4 text-left">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+          Demo camera setup
+        </h2>
+        <ul className="mt-3 space-y-2 text-sm text-slate-400">
+          {SETUP_TIPS.map((tip) => (
+            <li key={tip} className="flex gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-400" />
+              <span>{tip}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <a
         href="/"

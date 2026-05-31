@@ -1,6 +1,57 @@
 @import "tailwindcss";
 
-/* Un-mirror video display only (no overlay canvas on patient preview). */
+@theme {
+  --color-canvas: #f4f4f2;
+  --color-surface: #ffffff;
+  --color-ink: #1a1a1a;
+  --color-muted: #525252;
+  --color-sage: #4a6b5d;
+  --color-ocean: #4f6b78;
+  --color-clay: #8b7355;
+  --color-attention: #b85c4a;
+  --color-calm: #4a7c59;
+  --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .text-queue-number {
+    font-size: 2.25rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  .text-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-ink);
+  }
+}
+
+/* Un-mirror patient camera preview (video only). */
 .camera-feed-correct > video {
   transform: scaleX(-1);
 }

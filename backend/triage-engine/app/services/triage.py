@@ -26,9 +26,10 @@ ACUITY_MINUTES: dict[AcuityLevel, int] = {
     AcuityLevel.NON_URGENT: 35,
 }
 
-CRITICAL_HR_BPM = 50
-HR_DROP_RATIO = 0.8
-MIN_ALERT_CONFIDENCE = 0.6
+CRITICAL_HR_BPM = 45
+HR_DROP_RATIO = 0.72
+MIN_HR_DROP_BPM = 28
+MIN_ALERT_CONFIDENCE = 0.65
 
 
 def format_hr_alert_message(reading: BiometricReading) -> str:
@@ -109,9 +110,10 @@ def is_biometric_critical(
     reading: BiometricReading,
     previous: BiometricReading | None,
 ) -> bool:
+    """Alert only on high-confidence, reliable readings — not rPPG noise spikes."""
     if reading.confidence < MIN_ALERT_CONFIDENCE:
         return False
-    if reading.measurement_status == "unreliable":
+    if reading.measurement_status != "reliable":
         return False
 
     hr = reading.heart_rate_bpm
@@ -119,11 +121,14 @@ def is_biometric_critical(
         return True
     if (
         previous
+        and previous.measurement_status == "reliable"
         and previous.heart_rate_bpm
         and hr is not None
-        and hr < previous.heart_rate_bpm * HR_DROP_RATIO
     ):
-        return True
+        prev_hr = previous.heart_rate_bpm
+        drop_bpm = prev_hr - hr
+        if drop_bpm >= MIN_HR_DROP_BPM and hr < prev_hr * HR_DROP_RATIO:
+            return True
     return False
 
 

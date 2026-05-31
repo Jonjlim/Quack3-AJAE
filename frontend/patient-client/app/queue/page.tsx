@@ -2,9 +2,13 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AcuityLoad } from "../components/AcuityLoad";
-import { CameraToggle } from "../components/CameraToggle";
-import { HelpButton } from "../components/HelpButton";
+import { CasefileChat } from "../components/CasefileChat";
+import { CameraPanel } from "../components/camera/CameraPanel";
+import { HelpRequest } from "../components/help/HelpRequest";
+import { QueueHero } from "../components/queue/QueueHero";
+import { DepartmentStatus } from "../components/queue/DepartmentStatus";
+import { PageShell } from "../components/ui/PageShell";
+import { PageSkeleton } from "../components/ui/PageSkeleton";
 import { MOCK_ACUITY_LOAD, MOCK_QUEUE_STATUS } from "@/lib/mock-data";
 import { linkPatientSession } from "@/lib/auth-api";
 import { isFirebaseAuthEnabled, ensureAnonymousAuth } from "@/lib/firebase";
@@ -46,7 +50,9 @@ function QueueContent() {
       router.replace("/");
     }
   }, [patientId, router]);
+
   const [queue, setQueue] = useState<QueueStatus>(MOCK_QUEUE_STATUS);
+  const [queueLoaded, setQueueLoaded] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
   const [wsConnected, setWsConnected] = useState(isMockMode());
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -54,6 +60,7 @@ function QueueContent() {
 
   useEffect(() => {
     if (!patientId) return;
+    const id: string = patientId;
 
     let cancelled = false;
 
@@ -62,19 +69,29 @@ function QueueContent() {
       try {
         if (isFirebaseAuthEnabled()) {
           await ensureAnonymousAuth();
-          await linkPatientSession(patientId);
+          await linkPatientSession(id);
         }
 
-        const queue = await getQueueStatus(patientId);
+        const queueData = await getQueueStatus(id);
         if (cancelled) return;
-        setQueue(queue);
+        setQueue(queueData);
+        setQueueLoaded(true);
 
-        const ws = await connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
-          if (data.type === "QUEUE_UPDATE" && data.payload) {
-            setQueue(data.payload);
-            setFetchError(null);
+        let ws: WebSocket | null = null;
+        try {
+          ws = await connectPatientSocket(id, (data: TelemetryEnvelope<QueueStatus>) => {
+            if (data.type === "QUEUE_UPDATE" && data.payload) {
+              setQueue(data.payload);
+              setFetchError(null);
+            }
+          });
+        } catch (wsErr) {
+          if (!cancelled) {
+            const msg =
+              wsErr instanceof Error ? wsErr.message : "Could not connect for live updates.";
+            setFetchError(msg);
           }
-        });
+        }
         if (cancelled) {
           ws?.close();
           return;
@@ -84,20 +101,38 @@ function QueueContent() {
           setWsConnected(false);
           return;
         }
-        ws.onopen = () => setWsConnected(true);
-        ws.onclose = () => {
+        ws.onopen = () => {
+          setWsConnected(true);
+          setFetchError(null);
+        };
+        ws.onclose = (event) => {
           setWsConnected(false);
           wsRef.current = null;
+          if (event.code === 1008 && event.reason) {
+            setFetchError(
+              event.reason.includes("mismatch")
+                ? "Session expired — go back and sign in with your patient ID again."
+                : event.reason,
+            );
+          }
         };
         ws.onerror = () => setWsConnected(false);
       } catch (err) {
         if (cancelled) return;
         if (isMockMode()) {
           setQueue(MOCK_QUEUE_STATUS);
+          setQueueLoaded(true);
           return;
         }
-        setFetchError(err instanceof Error ? err.message : "Could not load queue status.");
+        const message =
+          err instanceof Error ? err.message : "Could not load queue status.";
+        setFetchError(
+          message.includes("fetch") || message.includes("reach")
+            ? "Cannot reach the triage server. Ensure the backend is running (port 8000), then refresh."
+            : message,
+        );
         setWsConnected(false);
+        setQueueLoaded(true);
       }
     }
 
@@ -111,19 +146,25 @@ function QueueContent() {
   }, [patientId]);
 
   if (!patientId) {
-    return <div className="p-8 text-center text-slate-600">Redirecting to sign in…</div>;
+    return (
+      <PageShell>
+        <p className="text-center text-muted">Redirecting to sign in…</p>
+      </PageShell>
+    );
   }
+
+  const pid: string = patientId;
 
   function handleHelp() {
     if (isMockMode()) {
       setHelpSent(true);
-      console.info("[mock] Help request sent for", patientId);
+      console.info("[mock] Help request sent for", pid);
       return;
     }
 
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
-      sendHelpRequest(ws, patientId);
+      sendHelpRequest(ws, pid);
       setHelpSent(true);
       return;
     }
@@ -132,7 +173,7 @@ function QueueContent() {
       ws.addEventListener(
         "open",
         () => {
-          sendHelpRequest(ws, patientId);
+          sendHelpRequest(ws, pid);
           setHelpSent(true);
         },
         { once: true },
@@ -140,72 +181,58 @@ function QueueContent() {
       return;
     }
 
-    setFetchError("Not connected — wait for Live status, then try again.");
+    setFetchError("Not connected — wait until status shows Connected, then try again.");
   }
 
   function notifyCameraStatus(enabled: boolean) {
     if (isMockMode()) return;
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
-      sendCameraStatus(ws, patientId, enabled);
+      sendCameraStatus(ws, pid, enabled);
       return;
     }
     if (ws?.readyState === WebSocket.CONNECTING) {
-      ws.addEventListener("open", () => sendCameraStatus(ws, patientId, enabled), { once: true });
+      ws.addEventListener("open", () => sendCameraStatus(ws, pid, enabled), { once: true });
     }
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-4 py-8">
-      <header>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium text-blue-600">Queue Status</p>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              wsConnected
-                ? "bg-emerald-100 text-emerald-800"
-                : isMockMode()
-                  ? "bg-slate-100 text-slate-600"
-                  : "bg-amber-100 text-amber-800"
-            }`}
-            title={
-              isMockMode()
-                ? "Mock mode — no live updates"
-                : wsConnected
-                  ? "Live queue updates"
-                  : "Reconnecting…"
-            }
-          >
-            {isMockMode() ? "Mock" : wsConnected ? "Live" : "Offline"}
-          </span>
-        </div>
-        <h1 className="mt-1 text-3xl font-bold">Position #{queue.queue_position}</h1>
-        <p className="mt-2 text-slate-600">
-          Waiting {queue.wait_minutes} min · Est. {queue.estimated_wait_minutes} min total
-        </p>
-      </header>
-
+    <PageShell>
       {fetchError && (
-        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="alert">
+        <p
+          className="rounded-2xl bg-clay/15 px-4 py-3 text-sm font-medium text-clay"
+          role="alert"
+        >
           {fetchError}
         </p>
       )}
 
-      <AcuityLoad data={queue.acuity_load ?? MOCK_ACUITY_LOAD} />
-      <CameraToggle patientId={patientId} onCameraChange={notifyCameraStatus} />
-      <HelpButton onHelp={handleHelp} disabled={helpSent} />
-      {helpSent && (
-        <p className="text-center text-sm font-medium text-red-600">
-          Help request sent — a nurse has been notified.
-        </p>
-      )}
-    </main>
+      <QueueHero
+        queue={queue}
+        wsConnected={wsConnected}
+        isMockMode={isMockMode()}
+        loading={!queueLoaded}
+      />
+      <DepartmentStatus data={queue.acuity_load ?? MOCK_ACUITY_LOAD} />
+      <CasefileChat patientId={pid} />
+      <CameraPanel patientId={pid} onCameraChange={notifyCameraStatus} />
+
+      <div className="mt-auto pt-2">
+        <HelpRequest onConfirm={handleHelp} disabled={helpSent} sent={helpSent} />
+      </div>
+    </PageShell>
   );
 }
 
 export default function QueuePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading queue…</div>}>
+    <Suspense
+      fallback={
+        <PageShell>
+          <PageSkeleton />
+        </PageShell>
+      }
+    >
       <QueueContent />
     </Suspense>
   );
