@@ -7,7 +7,7 @@ import {
   type LocalVideoTrack,
 } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch, readApiError } from "../lib/auth-fetch";
 import { getApiBase } from "../lib/api-base";
 import {
   ER_WAITING_ROOM,
@@ -99,7 +99,7 @@ export function useBroadCameraPublisher(roomLabel: string | null) {
           display_name: label,
         }),
       });
-      if (!response.ok) throw new Error("Could not obtain LiveKit token");
+      if (!response.ok) throw new Error(await readApiError(response));
 
       const tokenData = (await response.json()) as LiveKitTokenResponse;
       const lkRoom = new Room({ adaptiveStream: true, dynacast: true });

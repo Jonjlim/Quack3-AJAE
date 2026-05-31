@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Room, RoomEvent, Track, type RemoteTrackPublication } from "livekit-client";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch, readApiError } from "../lib/auth-fetch";
 import { getApiBase, isMockMode } from "../lib/api-base";
 import { isRoomCameraIdentity } from "../lib/livekit-constants";
 
@@ -107,8 +107,7 @@ export function useLiveKitRoom(
         });
         if (cancelled) return;
         if (!response.ok) {
-          const detail = await response.text();
-          throw new Error(detail || "Token request failed");
+          throw new Error(await readApiError(response));
         }
 
         const tokenData = (await response.json()) as {
