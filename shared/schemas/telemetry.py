@@ -199,6 +199,18 @@ class ClipFallAnalysisResponse(BaseModel):
     broadcast: bool = False
 
 
+class SnapshotFallAnalysisResponse(BaseModel):
+    """Result of Gemini-based fall analysis comparing two camera snapshots."""
+
+    fall_detected: bool = False
+    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+    danger_level: Literal["low", "medium", "high"] = "low"
+    coordinates: dict[str, int] | None = None
+    description: str | None = None
+    alert: AlertEvent | None = None
+    broadcast: bool = False
+
+
 class RppgQualityMetrics(BaseModel):
     face_coverage: float = Field(ge=0.0, le=1.0)
     motion_score: float = Field(ge=0.0, le=1.0)

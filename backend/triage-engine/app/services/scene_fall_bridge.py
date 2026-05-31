@@ -34,3 +34,46 @@ def run_fall_analysis(video_bytes: bytes, mime_type: str = "video/webm") -> dict
     """Run Gemini video fall analysis synchronously (call via asyncio.to_thread)."""
     detect_fall = _import_detector()
     return detect_fall(video_bytes, mime_type=mime_type)
+
+
+def run_snapshot_analysis(
+    before_bytes: bytes,
+    current_bytes: bytes,
+    before_mime: str = "image/jpeg",
+    current_mime: str = "image/jpeg",
+) -> dict:
+    """Compare two camera snapshots for fall detection (legacy 2-frame mode).
+
+    Synchronous — run via asyncio.to_thread in async endpoints.
+    """
+    try:
+        from fall_detection import detect_fall_from_snapshots  # noqa: PLC0415
+    except ImportError as exc:
+        raise SceneFallUnavailableError(
+            "scene-intel fall_detection is unavailable — ensure google-genai is installed "
+            "and GEMINI_API_KEY is set in .env"
+        ) from exc
+    return detect_fall_from_snapshots(
+        before_bytes, current_bytes, before_mime, current_mime
+    )
+
+
+def run_sequence_analysis(frames: list[tuple[bytes, str]]) -> dict:
+    """Analyze a chronological sequence of camera frames for fall detection.
+
+    Args:
+        frames: List of (image_bytes, mime_type) tuples, oldest first
+                (e.g. [t-9s, t-6s, t-3s, t-0s]).
+
+    Synchronous — run via asyncio.to_thread in async endpoints.
+    Returns dict with keys: fall_detected, confidence, danger_level,
+    coordinates, description.
+    """
+    try:
+        from fall_detection import detect_fall_from_sequence  # noqa: PLC0415
+    except ImportError as exc:
+        raise SceneFallUnavailableError(
+            "scene-intel fall_detection is unavailable — ensure google-genai is installed "
+            "and GEMINI_API_KEY is set in .env"
+        ) from exc
+    return detect_fall_from_sequence(frames)

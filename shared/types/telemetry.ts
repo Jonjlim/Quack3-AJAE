@@ -173,6 +173,17 @@ export interface ClipFallAnalysisResponse {
   broadcast: boolean;
 }
 
+/** Result of Gemini-based fall analysis comparing two camera snapshots. */
+export interface SnapshotFallAnalysisResponse {
+  fall_detected: boolean;
+  confidence: number;
+  danger_level: "low" | "medium" | "high";
+  coordinates: { x: number; y: number } | null;
+  description: string | null;
+  alert: AlertEvent | null;
+  broadcast: boolean;
+}
+
 export interface RppgQualityMetrics {
   face_coverage: number;
   motion_score: number;

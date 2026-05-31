@@ -18,9 +18,9 @@ load_dotenv(_ENV_PATH)
 _client = None
 
 # ── Model constants (change these to switch models) ──────────────────────────
-VIDEO_MODEL = "gemini-2.5-flash"
-TEXT_MODEL = "gemini-2.5-flash"
-AUDIO_MODEL = "gemini-2.5-flash"
+VIDEO_MODEL = "gemini-3.1-flash-lite"
+TEXT_MODEL = "gemini-3.1-flash-lite"
+AUDIO_MODEL = "gemini-3.1-flash-lite"
 
 
 class GeminiNotConfiguredError(RuntimeError):
@@ -85,6 +85,35 @@ def query_gemini_video(prompt, video_bytes, mime_type="video/mp4"):
         ],
     )
 
+    return response.text or ""
+
+
+# ── Multi-image query ─────────────────────────────────────────────────────────
+
+def query_gemini_images(
+    prompt: str,
+    images: list[tuple[bytes, str]],
+) -> str:
+    """Send a text prompt alongside one or more images to Gemini.
+
+    Args:
+        prompt: The instruction / question text.
+        images: List of (image_bytes, mime_type) tuples in the order they
+                should be presented to the model (e.g. before-image first,
+                then after-image).
+
+    Returns:
+        The model's text response.
+    """
+    client = _get_client()
+    parts: list[types.Part] = [types.Part.from_text(text=prompt)]
+    for image_bytes, mime_type in images:
+        parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
+
+    response = client.models.generate_content(
+        model=VIDEO_MODEL,
+        contents=[types.Content(role="user", parts=parts)],
+    )
     return response.text or ""
 
 

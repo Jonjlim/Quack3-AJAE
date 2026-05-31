@@ -113,50 +113,50 @@ Dismiss a sticky alert after nurse triage.
 
 ---
 
-### POST `/api/v1/alerts/analyze-clip`
+### POST `/api/v1/alerts/analyze-snapshot`
 
-**AI fall detection** — room camera sends a 10-second video clip; the backend runs Gemini (`gemini-2.5-flash`) via `backend/scene-intel` and, when a fall is detected, broadcasts a `CRITICAL_FALL` alert to all nurse WebSocket clients.
+**AI fall detection — dual-snapshot mode.**  The room camera sends one JPEG snapshot per second.  The backend maintains a per-room rolling buffer; once 3 seconds of history accumulate it sends the *current* snapshot and the one from *3 seconds ago* to Gemini (`gemini-2.5-flash`) for before/after comparison.  When a fall is confirmed, a `CRITICAL_FALL` alert is broadcast to all nurse WebSocket clients (rate-limited to once per 12 seconds per room).
 
 **Request:** `multipart/form-data`
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `clip` | yes | Video file — 10 seconds of footage (webm/mp4) |
-| `mime_type` | no | MIME type string; defaults to `video/webm` |
+| `snapshot` | yes | JPEG image frame (~640 px wide) |
+| `mime_type` | no | Defaults to `image/jpeg` |
 | `room_name` | no | Included in alert message (e.g. `"Triage Bay A"`) |
 | `patient_id` | no | Optional link to a patient record |
 
-**Clip timing (client side):**
-- The frontend records a rolling 10-second buffer of 1-second chunks.
-- A clip is sent every **8 seconds** → 2-second overlap between clips.
-- Only clips with ≥ 8 seconds of data are sent.
+**Snapshot timing (client side):**
+- Frontend captures one frame per second from the live camera stream.
+- If a previous request is still in-flight the tick is skipped to avoid pile-up.
+- First 3 calls per room return immediately with `fall_detected: false` (buffering).
 
-**Response `200`:** `ClipFallAnalysisResponse`
+**Response `200`:** `SnapshotFallAnalysisResponse`
 
 ```json
 {
   "fall_detected": true,
-  "confidence": 0.88,
+  "confidence": 0.91,
   "danger_level": "high",
   "coordinates": { "x": 412, "y": 530 },
-  "frame_timestamp": 7.2,
+  "description": "Person standing near the doorway in the first image is now lying flat on the floor.",
   "broadcast": true,
   "alert": {
     "alert_id": "alert-fall-1717099200",
     "type": "CRITICAL_FALL",
     "severity": "CRITICAL",
     "patient_id": null,
-    "message": "AI-detected fall in Triage Bay A (confidence 88%, danger high) at coordinates (412, 530)",
+    "message": "AI-detected fall in Triage Bay A (confidence 91%, danger high) at coordinates (412, 530)",
     "acknowledged": false,
     "created_at": "2026-05-30T18:20:00Z"
   }
 }
 ```
 
-When no fall is detected: `fall_detected: false`, `alert: null`, `broadcast: false`.
+When no fall is detected: `fall_detected: false`, `alert: null`, `broadcast: false`, `description` explains what Gemini observed.
 
-**Response `400`:** Empty video clip.
-**Response `503`:** Gemini unavailable (missing API key or `google-genai` not installed).
+**Response `400`:** Empty snapshot.
+**Response `503`:** Gemini unavailable (missing `GEMINI_API_KEY` or `google-genai` not installed).
 
 ---
 
@@ -199,9 +199,10 @@ REST camera opt-in before rPPG sampling.
 
 | Former path | Replacement |
 |-------------|-------------|
-| `POST /api/v1/scene-intel/fall-detection` | `POST /api/v1/alerts/analyze-clip` (Gemini clip analysis) |
+| `POST /api/v1/scene-intel/fall-detection` | `POST /api/v1/alerts/analyze-snapshot` |
+| `POST /api/v1/alerts/analyze-clip` | `POST /api/v1/alerts/analyze-snapshot` (snapshot-based, no video clips) |
 | `POST /api/v1/scene-intel/rppg` | `POST /api/v1/rppg` |
-| Browser MediaPipe fall detection | `POST /api/v1/alerts/analyze-clip` (clip upload, no client ML) |
+| Browser MediaPipe fall detection | `POST /api/v1/alerts/analyze-snapshot` (no client ML) |
 
 ---
 

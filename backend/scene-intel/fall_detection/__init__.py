@@ -1,1 +1,1 @@
-from .detector import detect_fall
+from .detector import detect_fall, detect_fall_from_sequence, detect_fall_from_snapshots
