@@ -110,7 +110,9 @@ export function WideAngleFeed({
               <div className="text-3xl opacity-20">📷</div>
               <p className="text-sm text-slate-600">Wide-angle room feed</p>
               <p className="text-xs text-slate-700">
-                Click "Use local camera" to start capturing
+                {connected
+                  ? "Open /camera on a room device or wait for patient streams"
+                  : "Click Connect feed"}
               </p>
             </div>
           )}

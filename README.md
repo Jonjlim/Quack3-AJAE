@@ -31,11 +31,11 @@ Demo playbook: [`docs/DEMO.md`](docs/DEMO.md)
 
 ## Quick Start
 
-### 1. Infrastructure
+### 1. Environment
 
 ```bash
 cp .env.example .env
-docker compose up -d
+# Fill in LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL from your LiveKit Cloud project
 ```
 
 ### 2. Triage Engine (Architect 3)
@@ -43,7 +43,7 @@ docker compose up -d
 ```bash
 cd backend/triage-engine
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt   # includes scene-intel (rPPG) dependencies
 ./run.sh
 ```
 

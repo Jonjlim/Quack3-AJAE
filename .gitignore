@@ -66,11 +66,8 @@ node_modules/
 .next/
 dist/
 out/
+frontend/patient-client/certificates/
 *.tsbuildinfo
 .turbo/
-
-# Docker volumes
-postgres_data/
-redis_data/
 
 package-lock.json

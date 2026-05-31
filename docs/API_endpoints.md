@@ -170,7 +170,7 @@ Roles: `patient`, `nurse`, `broad_camera`
 ```json
 {
   "token": "<jwt>",
-  "url": "ws://localhost:7880",
+  "url": "wss://your-project.livekit.cloud",
   "room": "er-waiting-room",
   "identity": "pat-001"
 }
@@ -263,15 +263,27 @@ Run scene-intel rPPG heart-rate analysis on a patient video clip. Applies biomet
 {
   "analysis": {
     "heart_rate_bpm": 88.5,
+    "heart_rate_bpm_low": 82.0,
+    "heart_rate_bpm_high": 95.0,
     "confidence": 0.9,
     "signal_quality": "good",
+    "measurement_status": "reliable",
+    "quality_metrics": {
+      "face_coverage": 0.92,
+      "motion_score": 0.08,
+      "peak_prominence": 0.75,
+      "chrom_fft_agreement_bpm": 2.0
+    },
     "error": null
   },
   "biometric": {
     "patient_id": "pat-002",
     "heart_rate_bpm": 88.5,
+    "heart_rate_bpm_low": 82.0,
+    "heart_rate_bpm_high": 95.0,
     "respiratory_rate_bpm": null,
     "confidence": 0.9,
+    "measurement_status": "reliable",
     "source": "rppg",
     "recorded_at": "2026-05-30T18:11:00Z"
   },
@@ -279,6 +291,8 @@ Run scene-intel rPPG heart-rate analysis on a patient video clip. Applies biomet
   "broadcast": true
 }
 ```
+
+**Note:** `biometric` is only populated when `measurement_status` is not `"unreliable"` and `confidence >= 0.5`. Unreliable analyses still return `200` with full `analysis` for patient-side coaching.
 
 ---
 

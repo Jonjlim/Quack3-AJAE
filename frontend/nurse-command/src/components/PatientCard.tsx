@@ -21,6 +21,25 @@ const ACUITY_META: Record<
   NON_URGENT:    { triageNum: 5, triageColor: "#3b82f6", statusColor: "#639922", statusLabel: "STABLE" },
 };
 
+function formatHrDisplay(bio: BiometricReading | null | undefined): { value: string; sub?: string; muted: boolean } {
+  if (bio?.heart_rate_bpm == null) {
+    return { value: "—", muted: true };
+  }
+  const muted = bio.confidence < 0.5 || bio.measurement_status === "unreliable";
+  let sub: string | undefined;
+  if (bio.heart_rate_bpm_low != null && bio.heart_rate_bpm_high != null) {
+    sub = `${Math.round(bio.heart_rate_bpm_low)}–${Math.round(bio.heart_rate_bpm_high)}`;
+  }
+  return { value: String(Math.round(bio.heart_rate_bpm)), sub, muted };
+}
+
+function confidenceLabel(bio: BiometricReading | null | undefined): string | null {
+  if (!bio || bio.confidence <= 0) return null;
+  if (bio.measurement_status === "reliable" || bio.confidence >= 0.65) return "Reliable";
+  if (bio.measurement_status === "estimated" || bio.confidence >= 0.5) return "Estimated";
+  return "Low confidence";
+}
+
 function formatElapsed(baseMinutes: number, extraSeconds: number): string {
   const total = baseMinutes * 60 + extraSeconds;
   const h = Math.floor(total / 3600);
@@ -41,7 +60,9 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
   }, []);
 
   const meta = ACUITY_META[patient.acuity] ?? ACUITY_META.NON_URGENT;
-  const hr = patient.last_biometric?.heart_rate_bpm;
+  const bio = patient.last_biometric;
+  const hrDisplay = formatHrDisplay(bio);
+  const confLabel = confidenceLabel(bio);
 
   return (
     <button
@@ -95,12 +116,28 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
 
       {/* Row 3: HR value + sparkline */}
       <div className="flex items-center gap-2">
-        <div className="flex items-baseline gap-1">
-          <span className="text-xs text-slate-500">HR</span>
-          <span className="tabular-nums text-base font-bold" style={{ color: meta.statusColor }}>
-            {hr ?? "—"}
-          </span>
-          <span className="text-xs text-slate-600">bpm</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-baseline gap-1">
+            <span className="text-xs text-slate-500">HR</span>
+            <span
+              className="tabular-nums text-base font-bold"
+              style={{ color: hrDisplay.muted ? "#64748b" : meta.statusColor }}
+            >
+              {hrDisplay.value}
+            </span>
+            {hrDisplay.sub && (
+              <span className="text-xs text-slate-500">({hrDisplay.sub})</span>
+            )}
+            <span className="text-xs text-slate-600">bpm</span>
+          </div>
+          {confLabel && (
+            <span
+              className="text-[10px] font-medium uppercase tracking-wide"
+              style={{ color: hrDisplay.muted ? "#475569" : "#94a3b8" }}
+            >
+              {confLabel}
+            </span>
+          )}
         </div>
         {hrData.length > 1 && (
           <div className="h-8 min-w-0 flex-1">

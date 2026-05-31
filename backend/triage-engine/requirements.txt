@@ -8,3 +8,5 @@ livekit-api>=0.8.0
 redis>=5.0.0
 httpx>=0.27.0
 pytest>=8.0.0
+# In-process scene-intel (rPPG / fall detection)
+-r ../scene-intel/requirements.txt

@@ -109,6 +109,14 @@ export default function App() {
             <TabButton active={tab === "checkin"} onClick={() => setTab("checkin")}>
               + Check In Patient
             </TabButton>
+            <a
+              href="/camera"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-300"
+            >
+              Room Camera ↗
+            </a>
           </nav>
         </div>
 

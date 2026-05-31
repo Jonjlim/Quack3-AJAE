@@ -9,6 +9,7 @@ from shared.schemas.telemetry import (
     AcuityLoad,
     AlertAckRequest,
     AlertAckResponse,
+    CameraStatusPayload,
     DemoFallTriggerResponse,
     PatientRecord,
     QueueStatus,
@@ -34,6 +35,21 @@ async def get_acuity_load() -> AcuityLoad:
 @router.get("/patients", response_model=list[PatientRecord])
 async def get_patients() -> list[PatientRecord]:
     return state_service.get_patients()
+
+
+@router.post("/patients/{patient_id}/camera", response_model=PatientRecord)
+async def set_patient_camera(patient_id: str, body: CameraStatusPayload) -> PatientRecord:
+    """Reliable camera opt-in before rPPG sampling (WebSocket can race the first clip)."""
+    if body.patient_id != patient_id:
+        raise HTTPException(status_code=400, detail="patient_id in body must match URL")
+    patient = state_service.get_patient(patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = state_service.set_camera_enabled(patient_id, body.enabled)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    await events.patient_update(updated)
+    return updated
 
 
 @router.post("/alerts/{alert_id}/ack", response_model=AlertAckResponse)

@@ -4,7 +4,7 @@ Bulletproof the judging demo when hackathon Wi-Fi or WebRTC fails.
 
 ## Normal Path
 
-1. Start infrastructure: `docker compose up -d`
+1. Copy `.env.example` → `.env` and set LiveKit Cloud credentials
 2. Start triage engine: see [README](../README.md)
 3. Start nurse dashboard with live telemetry: `VITE_USE_MOCK=false npm run dev` in `frontend/nurse-command`
 4. Broad camera streams via LiveKit → scene-intel samples frames → fall alert fires → sticky panel on nurse dash
@@ -56,7 +56,7 @@ Lead with the HIPAA pivot: patients see **Anonymized Acuity Load** (aggregate tr
 
 ## Pre-Judging Checklist
 
-- [ ] `docker compose ps` — postgres, redis, livekit all healthy
+- [ ] LiveKit Cloud credentials set in `.env` (token endpoint returns a valid JWT)
 - [ ] `curl http://localhost:8000/health` returns `{"status":"ok"}`
 - [ ] Nurse dash loads at http://localhost:5173
 - [ ] Patient PWA loads at http://localhost:3000
