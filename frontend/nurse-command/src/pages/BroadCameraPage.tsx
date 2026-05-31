@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBroadCameraPublisher } from "../hooks/useBroadCameraPublisher";
 import { useFallDetection } from "../hooks/useFallDetection";
 
+
 const ROOM_NAME_KEY = "er-overwatch-room-camera-name";
 
 function readRoomFromUrl(): string {
@@ -16,10 +17,10 @@ function readStoredRoomName(): string {
 }
 
 const SETUP_TIPS = [
-  "Use the rear camera and clean the lens before judging.",
-  "Place the device high in a corner, angled down at the demo fall zone.",
-  "Keep the fall zone bright and avoid backlighting from windows.",
-  "Frame full bodies, not just faces — MediaPipe needs shoulders and hips visible.",
+  "Use the rear camera and clean the lens before mounting.",
+  "Place the device high in a corner, angled down at the monitoring zone.",
+  "Keep the area bright and avoid backlighting from windows.",
+  "Frame the full room — Gemini AI works best when full bodies are visible in the clip.",
 ];
 
 function StatusIndicator({ live }: { live: boolean }) {
@@ -48,8 +49,7 @@ export default function BroadCameraPage() {
   const isSetup = activeRoomName === null;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { cvReady } = useFallDetection(stream, isLive, canvasRef, activeRoomName);
+  const { cvReady } = useFallDetection(stream, isLive, activeRoomName);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream;
@@ -118,18 +118,19 @@ export default function BroadCameraPage() {
                   <p className="text-xl font-semibold text-emerald-300">Live</p>
                   {!cvReady && (
                     <span className="animate-pulse rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
-                      CV Loading…
+                      AI Analysis Loading…
                     </span>
                   )}
                   {cvReady && (
                     <span className="rounded-full bg-violet-900 px-2 py-0.5 text-xs font-medium text-violet-300">
-                      CV Active
+                      AI Active
                     </span>
                   )}
                 </div>
                 <p className="text-sm text-slate-400">
-                  Publishing 720p room video. Fall detection runs on this device. Nurses see
-                  &quot;{activeRoomName}&quot; on the wide-angle feed.
+                  Publishing 720p room video. 10-second clips are sent to Gemini AI every 8
+                  seconds for fall detection. Nurses see &quot;{activeRoomName}&quot; on the
+                  wide-angle feed.
                 </p>
                 <div className="relative w-full overflow-hidden rounded-xl bg-black">
                   <div className="camera-feed-correct relative w-full">
@@ -141,10 +142,6 @@ export default function BroadCameraPage() {
                       className="w-full"
                     />
                   </div>
-                  <canvas
-                    ref={canvasRef}
-                    className="pointer-events-none absolute inset-0 h-full w-full"
-                  />
                 </div>
                 <button
                   type="button"

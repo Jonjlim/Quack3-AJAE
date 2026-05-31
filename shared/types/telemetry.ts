@@ -162,6 +162,17 @@ export interface FallReportResponse {
   accepted: boolean;
 }
 
+/** Result of Gemini-based fall analysis on a room-camera video clip. */
+export interface ClipFallAnalysisResponse {
+  fall_detected: boolean;
+  confidence: number;
+  danger_level: "low" | "medium" | "high";
+  coordinates: { x: number; y: number } | null;
+  frame_timestamp: number | null;
+  alert: AlertEvent | null;
+  broadcast: boolean;
+}
+
 export interface RppgQualityMetrics {
   face_coverage: number;
   motion_score: number;

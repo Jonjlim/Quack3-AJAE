@@ -64,6 +64,14 @@ try:
     app.include_router(casefile.router)
 except ImportError as exc:
     logger.warning("Casefile routes disabled (optional deps missing): %s", exc)
+
+try:
+    from app.routers import scene_fall
+
+    app.include_router(scene_fall.router)
+except ImportError as exc:
+    logger.warning("Scene-fall routes disabled (optional deps missing): %s", exc)
+
 app.include_router(ws_nurse.router)
 
 

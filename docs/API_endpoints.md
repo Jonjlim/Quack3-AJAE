@@ -113,6 +113,53 @@ Dismiss a sticky alert after nurse triage.
 
 ---
 
+### POST `/api/v1/alerts/analyze-clip`
+
+**AI fall detection** — room camera sends a 10-second video clip; the backend runs Gemini (`gemini-2.5-flash`) via `backend/scene-intel` and, when a fall is detected, broadcasts a `CRITICAL_FALL` alert to all nurse WebSocket clients.
+
+**Request:** `multipart/form-data`
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `clip` | yes | Video file — 10 seconds of footage (webm/mp4) |
+| `mime_type` | no | MIME type string; defaults to `video/webm` |
+| `room_name` | no | Included in alert message (e.g. `"Triage Bay A"`) |
+| `patient_id` | no | Optional link to a patient record |
+
+**Clip timing (client side):**
+- The frontend records a rolling 10-second buffer of 1-second chunks.
+- A clip is sent every **8 seconds** → 2-second overlap between clips.
+- Only clips with ≥ 8 seconds of data are sent.
+
+**Response `200`:** `ClipFallAnalysisResponse`
+
+```json
+{
+  "fall_detected": true,
+  "confidence": 0.88,
+  "danger_level": "high",
+  "coordinates": { "x": 412, "y": 530 },
+  "frame_timestamp": 7.2,
+  "broadcast": true,
+  "alert": {
+    "alert_id": "alert-fall-1717099200",
+    "type": "CRITICAL_FALL",
+    "severity": "CRITICAL",
+    "patient_id": null,
+    "message": "AI-detected fall in Triage Bay A (confidence 88%, danger high) at coordinates (412, 530)",
+    "acknowledged": false,
+    "created_at": "2026-05-30T18:20:00Z"
+  }
+}
+```
+
+When no fall is detected: `fall_detected: false`, `alert: null`, `broadcast: false`.
+
+**Response `400`:** Empty video clip.
+**Response `503`:** Gemini unavailable (missing API key or `google-genai` not installed).
+
+---
+
 ### POST `/api/v1/demo/trigger-fall`
 
 Demo fallback — fires a pre-baked `CRITICAL_FALL` alert (no camera required).
@@ -148,12 +195,13 @@ REST camera opt-in before rPPG sampling.
 
 ---
 
-## Removed endpoints
+## Removed / superseded endpoints
 
 | Former path | Replacement |
 |-------------|-------------|
-| `POST /api/v1/scene-intel/fall-detection` | Browser detection + `POST /api/v1/alerts/fall-report` |
+| `POST /api/v1/scene-intel/fall-detection` | `POST /api/v1/alerts/analyze-clip` (Gemini clip analysis) |
 | `POST /api/v1/scene-intel/rppg` | `POST /api/v1/rppg` |
+| Browser MediaPipe fall detection | `POST /api/v1/alerts/analyze-clip` (clip upload, no client ML) |
 
 ---
 

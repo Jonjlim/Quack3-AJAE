@@ -5,12 +5,13 @@ from generalFunctions.GeminiAPI import query_gemini_video
 
 _PROMPT = """You are a hospital urgent care fall detection system analyzing a video clip from a monitoring camera.
 
-Analyze the video for any falls or fall-like events. Evaluate:
+Analyze the video for anyone that might've fallen unconscious events. Evaluate:
 1. Whether a fall occurred
-2. Your confidence level (0.0 to 1.0)
-3. The danger level: "low", "medium", or "high"
-4. If a fall occurred, the approximate pixel coordinates (x, y) of the center of the fall
-5. If a fall occurred, the approximate timestamp in seconds within the clip
+2. Whether anyone in the frame fell unconscious
+3. Your confidence level (0.0 to 1.0)
+4. The danger level: "low", "medium", or "high"
+5. If someone is determined to have fallen unconscious, approximate pixel coordinates (x, y) of the center of the person.
+6. If someone is determined to have fallen unconscious, the approximate timestamp in seconds within the clip
 
 Respond with ONLY valid JSON in this exact format, no other text:
 {
