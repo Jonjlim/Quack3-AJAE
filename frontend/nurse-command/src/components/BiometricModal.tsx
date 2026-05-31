@@ -9,6 +9,8 @@ import {
   YAxis,
 } from "recharts";
 import type { AcuityLevel, BiometricReading, PatientRecord } from "@shared/types/telemetry";
+import type { RemoteVideoTrack } from "../hooks/useLiveKitRoom";
+import { RemoteVideo } from "./RemoteVideo";
 
 interface BiometricModalProps {
   patient: PatientRecord | null;
@@ -46,13 +48,16 @@ export function BiometricModal({
   patient,
   hrHistory,
   latestBiometric,
+  patientVideo,
   onClose,
   onEscalate,
   onMarkStable,
 }: BiometricModalProps) {
   useEffect(() => {
     if (!patient) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [patient, onClose]);
@@ -65,7 +70,7 @@ export function BiometricModal({
       ? latestBiometric
       : patient.last_biometric;
 
-  const hrData = history.length > 0 ? history : (latest ? [latest] : []);
+  const hrData = history.length > 0 ? history : latest ? [latest] : [];
   const baselineHr = hrData.length > 0 ? hrData[0].heart_rate_bpm : null;
   const acuityColor = ACUITY_COLOR[patient.acuity] ?? "#639922";
   const triageNum = ACUITY_TRIAGE[patient.acuity] ?? 5;
@@ -74,13 +79,14 @@ export function BiometricModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.78)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         className="w-full max-w-xl overflow-hidden rounded-xl"
         style={{ background: "#0d1526", border: `2px solid ${acuityColor}35` }}
       >
-        {/* Header */}
         <div
           className="flex items-start justify-between px-5 py-4"
           style={{ background: "#111d33", borderBottom: "1px solid #1e293b" }}
@@ -109,9 +115,7 @@ export function BiometricModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
-          {/* Vitals */}
           <div className="grid grid-cols-3 gap-3">
             <VitalCard
               label="Heart Rate"
@@ -135,7 +139,6 @@ export function BiometricModal({
             />
           </div>
 
-          {/* HR trend graph */}
           {hrData.length > 1 && (
             <div>
               <p className="mb-2 text-xs uppercase tracking-widest text-slate-500">
@@ -183,7 +186,6 @@ export function BiometricModal({
             </div>
           )}
 
-          {/* Info rows */}
           <div className="grid grid-cols-2 gap-3">
             <InfoRow label="Queue Position" value={`#${patient.queue_position}`} />
             <InfoRow
@@ -192,23 +194,34 @@ export function BiometricModal({
             />
           </div>
 
-          {/* Camera feed placeholder */}
           {patient.camera_enabled && (
             <div
-              className="flex items-center justify-center rounded-lg"
-              style={{ background: "#080f1c", border: "1px solid #1e293b", height: 96 }}
+              className="overflow-hidden rounded-lg"
+              style={{ background: "#080f1c", border: "1px solid #1e293b", minHeight: 96 }}
             >
-              <span className="text-xs text-slate-600">
-                LiveKit patient feed — pending integration
-              </span>
+              {patientVideo ? (
+                <RemoteVideo
+                  track={patientVideo.mediaStreamTrack}
+                  className="aspect-video w-full"
+                  label={patient.display_name}
+                />
+              ) : (
+                <div className="flex h-24 items-center justify-center">
+                  <span className="text-xs text-slate-600">
+                    Connect LiveKit feed on dashboard to view stream
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 pt-1">
             <button
               type="button"
-              onClick={() => { onEscalate(patient.patient_id); onClose(); }}
+              onClick={() => {
+                onEscalate(patient.patient_id);
+                onClose();
+              }}
               className="flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: "#E24B4A18",
@@ -220,7 +233,10 @@ export function BiometricModal({
             </button>
             <button
               type="button"
-              onClick={() => { onMarkStable(patient.patient_id); onClose(); }}
+              onClick={() => {
+                onMarkStable(patient.patient_id);
+                onClose();
+              }}
               className="flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: "#63992218",

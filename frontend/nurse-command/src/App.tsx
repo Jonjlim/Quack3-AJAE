@@ -62,6 +62,11 @@ export default function App() {
     addPatient,
   } = useTriageSocket();
 
+  const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01");
+  const patientVideo = selectedPatient
+    ? liveKit.getVideoForIdentity(selectedPatient.patient_id)
+    : null;
+
   const alertCountByPatient = useMemo(() => {
     const map: Record<string, number> = {};
     for (const alert of activeAlerts) {
@@ -86,9 +91,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-white">
-      {/* Header */}
       <header className="flex flex-shrink-0 items-center justify-between border-b border-slate-800 px-5">
-        {/* Left: branding + tabs */}
         <div className="flex items-center gap-6">
           <div className="py-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">ER-OVERWATCH</p>
@@ -99,16 +102,12 @@ export default function App() {
             <TabButton active={tab === "dashboard"} onClick={() => setTab("dashboard")}>
               Dashboard
             </TabButton>
-            <TabButton
-              active={tab === "checkin"}
-              onClick={() => setTab("checkin")}
-            >
+            <TabButton active={tab === "checkin"} onClick={() => setTab("checkin")}>
               + Check In Patient
             </TabButton>
           </nav>
         </div>
 
-        {/* Right: controls */}
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -127,9 +126,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Body: shared right alert panel + tab content */}
       <div className="flex flex-1 gap-3 overflow-hidden p-3">
-        {/* Tab content */}
         {tab === "dashboard" ? (
           <>
             <PatientGrid
@@ -140,14 +137,19 @@ export default function App() {
               alertCountByPatient={alertCountByPatient}
             />
             <div className="min-w-0 flex-1">
-              <WideAngleFeed />
+              <WideAngleFeed
+                connected={liveKit.connected}
+                error={liveKit.error}
+                remoteVideos={liveKit.remoteVideos}
+                onConnect={liveKit.connect}
+                onDisconnect={liveKit.disconnect}
+              />
             </div>
           </>
         ) : (
           <CheckInTab onSubmit={addPatient} />
         )}
 
-        {/* Right — alert panel (always visible on both tabs) */}
         <aside className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-slate-700 bg-slate-900">
           <header className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
             <h2
@@ -171,7 +173,8 @@ export default function App() {
             ) : (
               unackedAlerts.map((alert) => {
                 const patientName = alert.patient_id
-                  ? (patients.find((p) => p.patient_id === alert.patient_id)?.display_name ?? alert.patient_id)
+                  ? (patients.find((p) => p.patient_id === alert.patient_id)?.display_name ??
+                    alert.patient_id)
                   : null;
                 return (
                   <div
@@ -184,7 +187,9 @@ export default function App() {
                         {alert.type.replace(/_/g, " ")}
                       </p>
                       {patientName && (
-                        <span className="shrink-0 font-mono text-xs text-slate-400">{patientName}</span>
+                        <span className="shrink-0 font-mono text-xs text-slate-400">
+                          {patientName}
+                        </span>
                       )}
                     </div>
                     <p className="mb-1 text-xs text-slate-400">{alert.message}</p>
@@ -195,7 +200,11 @@ export default function App() {
                       type="button"
                       onClick={() => acknowledgeAlert(alert.alert_id)}
                       className="w-full rounded py-1 text-xs font-semibold transition-opacity hover:opacity-80"
-                      style={{ background: "#E24B4A20", color: "#E24B4A", border: "1px solid #E24B4A40" }}
+                      style={{
+                        background: "#E24B4A20",
+                        color: "#E24B4A",
+                        border: "1px solid #E24B4A40",
+                      }}
                     >
                       Acknowledge
                     </button>
