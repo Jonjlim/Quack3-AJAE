@@ -89,6 +89,11 @@ export interface IntakeResponse {
   created_at: string;
 }
 
+export interface PatientRemoveResponse {
+  patient_id: string;
+  removed: boolean;
+}
+
 export interface QueueStatus {
   patient_id: string;
   queue_position: number;

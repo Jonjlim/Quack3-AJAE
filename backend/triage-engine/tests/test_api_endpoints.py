@@ -128,6 +128,21 @@ class TestPatients:
         assert patients[0].patient_id == "pat-002"
         assert patients[0].queue_position == 1
 
+    def test_remove_patient(self, client: TestClient) -> None:
+        created = client.post("/api/v1/intake", json=INTAKE_BODY).json()
+        patient_id = created["patient_id"]
+        assert any(p["patient_id"] == patient_id for p in client.get("/api/v1/patients").json())
+
+        response = client.delete(f"/api/v1/patients/{patient_id}")
+        assert response.status_code == 200
+        assert response.json() == {"patient_id": patient_id, "removed": True}
+        assert not any(p["patient_id"] == patient_id for p in client.get("/api/v1/patients").json())
+        assert client.get(f"/api/v1/queue/{patient_id}").status_code == 404
+
+    def test_remove_unknown_patient_404(self, client: TestClient) -> None:
+        response = client.delete("/api/v1/patients/pat-does-not-exist")
+        assert response.status_code == 404
+
 
 class TestAlerts:
     def test_demo_trigger_fall_creates_valid_alert(self, client: TestClient) -> None:

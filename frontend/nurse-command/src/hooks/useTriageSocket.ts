@@ -315,6 +315,34 @@ export function useTriageSocket() {
     );
   }, []);
 
+  const removePatient = useCallback(async (patientId: string) => {
+    if (USE_MOCK) {
+      setPatients((prev) => prev.filter((p) => p.patient_id !== patientId));
+      setHrHistory((prev) => {
+        const next = { ...prev };
+        delete next[patientId];
+        return next;
+      });
+      setActiveAlerts((prev) => prev.filter((a) => a.patient_id !== patientId));
+    } else {
+      const response = await authFetch(`${API_BASE}/api/v1/patients/${patientId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || `Remove failed (${response.status})`);
+      }
+      setPatients((prev) => prev.filter((p) => p.patient_id !== patientId));
+      setHrHistory((prev) => {
+        const next = { ...prev };
+        delete next[patientId];
+        return next;
+      });
+      setActiveAlerts((prev) => prev.filter((a) => a.patient_id !== patientId));
+    }
+    setSelectedPatient((prev) => (prev?.patient_id === patientId ? null : prev));
+  }, []);
+
   return {
     patients,
     activeAlerts,
@@ -330,6 +358,7 @@ export function useTriageSocket() {
     setDemoMode,
     escalatePatient,
     markStable,
+    removePatient,
     addPatient,
   };
 }
