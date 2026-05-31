@@ -17,6 +17,11 @@ load_dotenv(_ENV_PATH)
 
 _client = None
 
+# ── Model constants (change these to switch models) ──────────────────────────
+VIDEO_MODEL = "gemini-3.1-flash-lite"   # Used for video analysis
+TEXT_MODEL  = "gemini-3.1-flash-lite"   # Used for multi-turn text chat
+AUDIO_MODEL = "gemini-3.1-flash-lite"   # Used`` for audio transcription + chat
+
 
 def _get_client():
     """Lazy-initialize and cache the Gemini client."""
@@ -45,7 +50,7 @@ def query_gemini_video(prompt, video_bytes, mime_type="video/mp4"):
     client = _get_client()
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=VIDEO_MODEL,
         contents=[
             types.Content(
                 role="user",
@@ -62,7 +67,7 @@ def query_gemini_video(prompt, video_bytes, mime_type="video/mp4"):
 
 # ── Text chat ────────────────────────────────────────────────────────────────
 
-def query_gemini_chat(history, system_instruction, temperature=0.4, model="gemini-2.0-flash"):
+def query_gemini_chat(history, system_instruction, temperature=0.4, model=TEXT_MODEL):
     """Send a multi-turn text conversation to Gemini.
 
     Args:
@@ -91,7 +96,7 @@ def query_gemini_chat(history, system_instruction, temperature=0.4, model="gemin
 # ── Audio chat ───────────────────────────────────────────────────────────────
 
 def query_gemini_audio(history, audio_bytes, audio_prompt, system_instruction,
-                       mime_type="audio/webm", temperature=0.4, model="gemini-2.0-flash"):
+                       mime_type="audio/webm", temperature=0.4, model=AUDIO_MODEL):
     """Send conversation history + an audio clip to Gemini.
 
     Args:
