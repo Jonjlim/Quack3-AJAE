@@ -22,6 +22,8 @@ ENV PYTHONPATH=/app:/app/backend/rppg
 
 WORKDIR /app/backend/triage-engine
 
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
