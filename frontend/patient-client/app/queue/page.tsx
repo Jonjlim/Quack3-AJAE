@@ -54,51 +54,54 @@ function QueueContent() {
 
   useEffect(() => {
     if (!patientId) return;
-    setFetchError(null);
-
-    if (isFirebaseAuthEnabled()) {
-      void ensureAnonymousAuth()
-        .then(() => linkPatientSession(patientId))
-        .catch((err) => {
-          setFetchError(err instanceof Error ? err.message : "Could not link session.");
-        });
-    }
-
-    getQueueStatus(patientId)
-      .then(setQueue)
-      .catch((err) => {
-        if (isMockMode()) {
-          setQueue(MOCK_QUEUE_STATUS);
-        } else {
-          setFetchError(
-            err instanceof Error ? err.message : "Could not load queue status.",
-          );
-        }
-      });
 
     let cancelled = false;
-    void connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
-      if (data.type === "QUEUE_UPDATE" && data.payload) {
-        setQueue(data.payload);
-        setFetchError(null);
-      }
-    }).then((ws) => {
-      if (cancelled) {
-        ws?.close();
-        return;
-      }
-      wsRef.current = ws;
-      if (!ws) {
+
+    async function connectQueue() {
+      setFetchError(null);
+      try {
+        if (isFirebaseAuthEnabled()) {
+          await ensureAnonymousAuth();
+          await linkPatientSession(patientId);
+        }
+
+        const queue = await getQueueStatus(patientId);
+        if (cancelled) return;
+        setQueue(queue);
+
+        const ws = await connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
+          if (data.type === "QUEUE_UPDATE" && data.payload) {
+            setQueue(data.payload);
+            setFetchError(null);
+          }
+        });
+        if (cancelled) {
+          ws?.close();
+          return;
+        }
+        wsRef.current = ws;
+        if (!ws) {
+          setWsConnected(false);
+          return;
+        }
+        ws.onopen = () => setWsConnected(true);
+        ws.onclose = () => {
+          setWsConnected(false);
+          wsRef.current = null;
+        };
+        ws.onerror = () => setWsConnected(false);
+      } catch (err) {
+        if (cancelled) return;
+        if (isMockMode()) {
+          setQueue(MOCK_QUEUE_STATUS);
+          return;
+        }
+        setFetchError(err instanceof Error ? err.message : "Could not load queue status.");
         setWsConnected(false);
-        return;
       }
-      ws.onopen = () => setWsConnected(true);
-      ws.onclose = () => {
-        setWsConnected(false);
-        wsRef.current = null;
-      };
-      ws.onerror = () => setWsConnected(false);
-    });
+    }
+
+    void connectQueue();
 
     return () => {
       cancelled = true;
