@@ -7,7 +7,8 @@ import type {
   PatientRecord,
   TelemetryEnvelope,
 } from "@shared/types/telemetry";
-import { authFetch, wsUrlWithToken } from "../lib/auth-fetch";
+import { authFetch, registerNurseSession, wsUrlWithToken } from "../lib/auth-fetch";
+import { isFirebaseAuthEnabled } from "../lib/firebase";
 import { MOCK_PATIENTS, MOCK_INITIAL_ALERTS } from "../mock/mockData";
 
 export interface CheckInData {
@@ -74,12 +75,18 @@ export function useTriageSocket() {
     let ws: WebSocket | null = null;
     let cancelled = false;
 
-    void wsUrlWithToken("/ws/nurse").then((url) => {
-      if (cancelled) return;
-      ws = new WebSocket(url);
-      ws.onopen = () => setConnected(true);
-      ws.onclose = () => setConnected(false);
-      ws.onmessage = (event) => {
+    void (async () => {
+      try {
+        if (isFirebaseAuthEnabled()) {
+          await registerNurseSession();
+        }
+        if (cancelled) return;
+        const url = await wsUrlWithToken("/ws/nurse");
+        if (cancelled) return;
+        ws = new WebSocket(url);
+        ws.onopen = () => setConnected(true);
+        ws.onclose = () => setConnected(false);
+        ws.onmessage = (event) => {
       try {
         const envelope = JSON.parse(event.data as string) as TelemetryEnvelope;
         if (envelope.type === "PATIENTS_SNAPSHOT") {
@@ -107,7 +114,10 @@ export function useTriageSocket() {
         // ignore malformed messages
       }
       };
-    });
+      } catch {
+        setConnected(false);
+      }
+    })();
 
     return () => {
       cancelled = true;
