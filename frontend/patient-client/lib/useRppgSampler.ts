@@ -1,6 +1,6 @@
 import type { BiometricReading, RppgAnalysisResult } from "@shared/types/telemetry";
-import { useEffect, useRef } from "react";
-import { recordVideoClip, submitRppgClip } from "@/lib/rppg-client";
+import { useEffect, useRef, type RefObject } from "react";
+import { recordVideoClipFromPreview, submitRppgClip } from "@/lib/rppg-client";
 import { isMockMode } from "@/lib/ws-client";
 
 const WARMUP_MS = 3500;
@@ -10,7 +10,7 @@ const MAX_RETRIES = 2;
 
 export interface UseRppgSamplerOptions {
   patientId: string;
-  track: MediaStreamTrack | null;
+  videoRef: RefObject<HTMLVideoElement | null>;
   enabled: boolean;
   onSample?: (result: {
     reading: BiometricReading | null;
@@ -44,7 +44,7 @@ async function submitWithRetry(
 /** Periodically records camera clips and sends them for rPPG heart-rate analysis. */
 export function useRppgSampler({
   patientId,
-  track,
+  videoRef,
   enabled,
   onSample,
   onError,
@@ -55,19 +55,22 @@ export function useRppgSampler({
   onErrorRef.current = onError;
 
   useEffect(() => {
-    if (!enabled || !track) return;
+    if (!enabled) return;
 
     let cancelled = false;
     let inFlight = false;
 
     const sample = async () => {
-      if (cancelled || inFlight || !track || track.readyState === "ended") return;
+      if (cancelled || inFlight) return;
+
+      const video = videoRef.current;
+      if (!video || !video.videoWidth || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        return;
+      }
 
       inFlight = true;
       try {
-        const recordTrack = track.clone();
-        const blob = await recordVideoClip(recordTrack, CLIP_DURATION_MS);
-        recordTrack.stop();
+        const blob = await recordVideoClipFromPreview(video, CLIP_DURATION_MS);
         if (cancelled) return;
 
         const response = await submitWithRetry(patientId, blob, (msg) => {
@@ -99,5 +102,5 @@ export function useRppgSampler({
       clearTimeout(warmup);
       clearInterval(interval);
     };
-  }, [enabled, patientId, track]);
+  }, [enabled, patientId, videoRef]);
 }

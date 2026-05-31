@@ -10,6 +10,8 @@ function preferredMimeType(): string {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
 }
 
+const RPPG_REQUEST_TIMEOUT_MS = 120_000;
+
 /** Record a short clip from a camera track for rPPG analysis (~8s). */
 export function recordVideoClip(
   track: MediaStreamTrack,
@@ -42,6 +44,40 @@ export function recordVideoClip(
       if (recorder.state !== "inactive") recorder.stop();
     }, durationMs);
   });
+}
+
+/**
+ * Record from the live preview element — WebRTC tracks cloned for MediaRecorder
+ * often produce empty clips while LiveKit is publishing.
+ */
+export function recordVideoClipFromPreview(
+  video: HTMLVideoElement,
+  durationMs = 8000,
+): Promise<Blob> {
+  if (!video.videoWidth || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    return Promise.reject(new Error("Camera preview not ready"));
+  }
+
+  const captureStream = (
+    video as HTMLVideoElement & { captureStream?: () => MediaStream }
+  ).captureStream;
+  if (typeof captureStream === "function") {
+    const stream = captureStream.call(video);
+    const track = stream.getVideoTracks()[0];
+    if (track) {
+      return recordVideoClip(track, durationMs);
+    }
+  }
+
+  const src = video.srcObject;
+  if (src instanceof MediaStream) {
+    const track = src.getVideoTracks()[0];
+    if (track) {
+      return recordVideoClip(track, durationMs);
+    }
+  }
+
+  return Promise.reject(new Error("No camera stream available for vitals"));
 }
 
 /** POST a video clip to backend rPPG and apply biometrics on the triage engine. */
@@ -87,10 +123,14 @@ export async function submitRppgClip(
   form.append("patient_id", patientId);
   form.append("video", blob, `rppg-clip.${extension}`);
 
-  const response = await authFetch(`${getApiBase()}/api/v1/rppg`, {
-    method: "POST",
-    body: form,
-  });
+  const response = await authFetch(
+    `${getApiBase()}/api/v1/rppg`,
+    {
+      method: "POST",
+      body: form,
+    },
+    RPPG_REQUEST_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     const detail = await response.text();

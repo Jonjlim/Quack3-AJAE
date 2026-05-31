@@ -9,6 +9,7 @@ interface RemoteVideoProps {
   enableCV?: boolean;
   /** Room feeds are large presenter tiles; patient feeds show labels; thumbnails hide overlays. */
   feedRole?: "room" | "patient" | "thumbnail";
+  objectFit?: "cover" | "contain";
 }
 
 export function RemoteVideo({
@@ -17,6 +18,7 @@ export function RemoteVideo({
   label,
   enableCV = false,
   feedRole = "patient",
+  objectFit = "cover",
 }: RemoteVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -79,6 +81,7 @@ export function RemoteVideo({
 
   const isRoom = feedRole === "room";
   const isThumbnail = feedRole === "thumbnail";
+  const fitClass = isRoom || objectFit === "contain" ? "object-contain" : "object-cover";
 
   return (
     <div
@@ -99,7 +102,7 @@ export function RemoteVideo({
           ref={videoRef}
           autoPlay
           playsInline
-          className={`h-full w-full ${isRoom ? "object-contain" : "object-cover"}`}
+          className={`h-full w-full ${fitClass}`}
         />
         {enableCV && (
           <canvas
