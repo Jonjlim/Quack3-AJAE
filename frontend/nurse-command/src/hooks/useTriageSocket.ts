@@ -21,7 +21,7 @@ export interface CheckInResult {
   patient_id: string;
 }
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 function generateInitialHistory(patient: PatientRecord): BiometricReading[] {

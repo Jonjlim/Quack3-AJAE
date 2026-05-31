@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { BiometricModal } from "./components/BiometricModal";
 import { PatientGrid } from "./components/PatientGrid";
 import { WideAngleFeed } from "./components/WideAngleFeed";
+import { useFallDetection } from "./hooks/useFallDetection";
+import { useLocalCamera } from "./hooks/useLocalCamera";
 import { useLiveKitRoom } from "./hooks/useLiveKitRoom";
 import { useTriageSocket } from "./hooks/useTriageSocket";
 import { BROAD_CAMERA_IDENTITY } from "./lib/livekit-constants";
@@ -78,6 +80,8 @@ export default function App() {
   }, [patients]);
 
   const liveKit = useLiveKitRoom("er-waiting-room", "nurse-01", allowedVideoIdentities);
+  const localCamera = useLocalCamera();
+  useFallDetection(localCamera.stream, localCamera.active);
   const patientVideo = selectedPatient
     ? liveKit.getVideoForIdentity(selectedPatient.patient_id)
     : null;
@@ -167,6 +171,9 @@ export default function App() {
                 videoLabels={videoLabels}
                 onConnect={liveKit.connect}
                 onDisconnect={liveKit.disconnect}
+                localStream={localCamera.stream}
+                onStartLocalCamera={localCamera.start}
+                onStopLocalCamera={localCamera.stop}
               />
             </div>
           </>
