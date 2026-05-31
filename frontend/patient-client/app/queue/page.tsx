@@ -6,6 +6,8 @@ import { AcuityLoad } from "../components/AcuityLoad";
 import { CameraToggle } from "../components/CameraToggle";
 import { HelpButton } from "../components/HelpButton";
 import { MOCK_ACUITY_LOAD, MOCK_QUEUE_STATUS } from "@/lib/mock-data";
+import { linkPatientSession } from "@/lib/auth-api";
+import { isFirebaseAuthEnabled, ensureAnonymousAuth } from "@/lib/firebase";
 import {
   connectPatientSocket,
   getQueueStatus,
@@ -53,6 +55,15 @@ function QueueContent() {
   useEffect(() => {
     if (!patientId) return;
     setFetchError(null);
+
+    if (isFirebaseAuthEnabled()) {
+      void ensureAnonymousAuth()
+        .then(() => linkPatientSession(patientId))
+        .catch((err) => {
+          setFetchError(err instanceof Error ? err.message : "Could not link session.");
+        });
+    }
+
     getQueueStatus(patientId)
       .then(setQueue)
       .catch((err) => {
@@ -65,26 +76,33 @@ function QueueContent() {
         }
       });
 
-    const ws = connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
+    let cancelled = false;
+    void connectPatientSocket(patientId, (data: TelemetryEnvelope<QueueStatus>) => {
       if (data.type === "QUEUE_UPDATE" && data.payload) {
         setQueue(data.payload);
         setFetchError(null);
       }
+    }).then((ws) => {
+      if (cancelled) {
+        ws?.close();
+        return;
+      }
+      wsRef.current = ws;
+      if (!ws) {
+        setWsConnected(false);
+        return;
+      }
+      ws.onopen = () => setWsConnected(true);
+      ws.onclose = () => {
+        setWsConnected(false);
+        wsRef.current = null;
+      };
+      ws.onerror = () => setWsConnected(false);
     });
-    wsRef.current = ws;
 
-    if (!ws) {
-      setWsConnected(false);
-      return;
-    }
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => {
-      setWsConnected(false);
-      wsRef.current = null;
-    };
-    ws.onerror = () => setWsConnected(false);
     return () => {
-      ws.close();
+      cancelled = true;
+      wsRef.current?.close();
       wsRef.current = null;
     };
   }, [patientId]);

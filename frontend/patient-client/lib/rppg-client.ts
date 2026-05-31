@@ -1,4 +1,5 @@
 import type { RppgAnalysisResult, SceneIntelRppgResponse } from "@shared/types/telemetry";
+import { authFetch } from "@/lib/auth-fetch";
 import { getApiBase } from "@/lib/api-base";
 import { isMockMode } from "@/lib/ws-client";
 
@@ -86,7 +87,7 @@ export async function submitRppgClip(
   form.append("patient_id", patientId);
   form.append("video", blob, `rppg-clip.${extension}`);
 
-  const response = await fetch(`${getApiBase()}/api/v1/rppg`, {
+  const response = await authFetch(`${getApiBase()}/api/v1/rppg`, {
     method: "POST",
     body: form,
   });
