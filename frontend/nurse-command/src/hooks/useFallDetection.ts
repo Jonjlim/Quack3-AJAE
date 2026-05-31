@@ -15,8 +15,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { authFetch } from "../lib/auth-fetch";
-
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { getApiBase } from "../lib/api-base";
 
 /** Pixels wide for the snapshot sent to Gemini (height scales with aspect ratio). */
 const SNAPSHOT_WIDTH = 960;
@@ -108,7 +107,7 @@ export function useFallDetection(
           const label = roomName?.trim();
           if (label) form.append("room_name", label);
 
-          return authFetch(`${API_BASE}/api/v1/alerts/analyze-snapshot`, {
+          return authFetch(`${getApiBase()}/api/v1/alerts/analyze-snapshot`, {
             method: "POST",
             body: form,
           }).then((res) => {

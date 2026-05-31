@@ -1,4 +1,5 @@
 const DEFAULT_API = "http://localhost:8000";
+const PRODUCTION_API = "https://api.eroverwatch.tech";
 const API_PORT = 8000;
 
 const TUNNEL_HOST_SUFFIXES = [
@@ -28,24 +29,41 @@ function useSameOriginProxy(hostname: string, protocol: string): boolean {
   return isPrivateLanHost(hostname);
 }
 
-/** Resolve backend URL — LAN HTTPS + tunnel use same-origin proxy; production uses NEXT_PUBLIC_API_URL. */
+function resolveApiFromHost(): string | null {
+  if (typeof window === "undefined") return null;
+  const { hostname } = window.location;
+  if (hostname.endsWith(".eroverwatch.tech") || hostname === "eroverwatch.tech") {
+    return PRODUCTION_API;
+  }
+  return null;
+}
+
+/** Resolve backend URL — LAN HTTPS + tunnel use same-origin proxy; production uses api.eroverwatch.tech. */
 export function getApiBase(): string {
-  const configured = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API).replace(/\/$/, "");
+  const fromEnv = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
   if (typeof window !== "undefined") {
     const { hostname, protocol } = window.location;
     if (useSameOriginProxy(hostname, protocol)) {
       return window.location.origin;
     }
-    if (configured !== DEFAULT_API) {
-      return configured;
+    if (fromEnv && fromEnv !== DEFAULT_API) {
+      return fromEnv;
     }
+    const fromHost = resolveApiFromHost();
+    if (fromHost) return fromHost;
     if (hostname !== "localhost" && hostname !== "127.0.0.1") {
       return `${protocol}//${hostname}:${API_PORT}`;
     }
   }
 
-  return configured;
+  return fromEnv || DEFAULT_API;
+}
+
+export function isMockMode(): boolean {
+  if (process.env.NEXT_PUBLIC_USE_MOCK === "true") return true;
+  if (resolveApiFromHost()) return false;
+  return false;
 }
 
 export function getWsBase(): string {

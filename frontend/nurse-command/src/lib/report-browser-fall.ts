@@ -1,7 +1,6 @@
 import type { BrowserFallReportRequest } from "@shared/types/telemetry";
 import { authFetch } from "./auth-fetch";
-
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { getApiBase } from "./api-base";
 const FALL_COOLDOWN_MS = 8_000;
 
 const lastReportAtBySource = new Map<string, number>();
@@ -39,7 +38,7 @@ export async function reportBrowserFall(
   };
 
   try {
-    const res = await authFetch(`${API_BASE}/api/v1/alerts/fall-report`, {
+    const res = await authFetch(`${getApiBase()}/api/v1/alerts/fall-report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

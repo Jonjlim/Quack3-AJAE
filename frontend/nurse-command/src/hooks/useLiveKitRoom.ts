@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Room, RoomEvent, Track, type RemoteTrackPublication } from "livekit-client";
 import { authFetch } from "../lib/auth-fetch";
+import { getApiBase, isMockMode } from "../lib/api-base";
 import { isRoomCameraIdentity } from "../lib/livekit-constants";
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const USE_MOCK = isMockMode();
 
 export interface RemoteVideoTrack {
   identity: string;
@@ -98,7 +99,7 @@ export function useLiveKitRoom(
       setRemoteVideos([]);
 
       try {
-        const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+        const apiBase = getApiBase();
         const response = await authFetch(`${apiBase}/api/v1/livekit/token`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

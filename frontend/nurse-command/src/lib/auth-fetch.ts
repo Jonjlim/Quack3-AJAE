@@ -1,6 +1,5 @@
 import { getIdToken, isFirebaseAuthEnabled } from "./firebase";
-
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { getApiBase, getWsBase } from "./api-base";
 
 export async function authFetch(
   input: RequestInfo | URL,
@@ -17,7 +16,7 @@ export async function authFetch(
 }
 
 export async function wsUrlWithToken(path: string): Promise<string> {
-  const base = `${API_BASE.replace(/^http/, "ws")}${path}`;
+  const base = `${getWsBase()}${path}`;
   if (!isFirebaseAuthEnabled()) return base;
   const token = await getIdToken();
   if (!token) return base;
@@ -27,7 +26,7 @@ export async function wsUrlWithToken(path: string): Promise<string> {
 
 export async function registerNurseSession(): Promise<void> {
   if (!isFirebaseAuthEnabled()) return;
-  const response = await authFetch(`${API_BASE}/api/v1/auth/register-nurse`, {
+  const response = await authFetch(`${getApiBase()}/api/v1/auth/register-nurse`, {
     method: "POST",
   });
   if (!response.ok) {

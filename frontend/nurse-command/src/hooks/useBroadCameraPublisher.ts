@@ -8,6 +8,7 @@ import {
 } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "../lib/auth-fetch";
+import { getApiBase } from "../lib/api-base";
 import {
   ER_WAITING_ROOM,
   roomCameraIdentity,
@@ -15,7 +16,6 @@ import {
 
 export type BroadCameraStatus = "starting" | "live" | "replaced" | "error" | "idle";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const ROOM_CAMERA_RESOLUTION = { width: 1280, height: 720 } as const;
 const ROOM_CAMERA_FRAME_RATE = 30;
 
@@ -89,7 +89,7 @@ export function useBroadCameraPublisher(roomLabel: string | null) {
 
     try {
       const identity = roomCameraIdentity(label);
-      const response = await authFetch(`${API_BASE}/api/v1/livekit/token`, {
+      const response = await authFetch(`${getApiBase()}/api/v1/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

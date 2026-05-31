@@ -8,6 +8,7 @@ import type {
   TelemetryEnvelope,
 } from "@shared/types/telemetry";
 import { authFetch, registerNurseSession, wsUrlWithToken } from "../lib/auth-fetch";
+import { getApiBase, isMockMode } from "../lib/api-base";
 import { isFirebaseAuthEnabled } from "../lib/firebase";
 import { MOCK_PATIENTS, MOCK_INITIAL_ALERTS } from "../mock/mockData";
 
@@ -22,8 +23,7 @@ export interface CheckInResult {
   patient_id: string;
 }
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const USE_MOCK = isMockMode();
 
 function generateInitialHistory(patient: PatientRecord): BiometricReading[] {
   const base = patient.last_biometric;
@@ -119,7 +119,7 @@ export function useTriageSocket() {
 
   const refreshPatients = useCallback(async () => {
     try {
-      const response = await authFetch(`${API_BASE}/api/v1/patients`);
+      const response = await authFetch(`${getApiBase()}/api/v1/patients`);
       if (!response.ok) {
         throw new Error(`Patients API returned ${response.status}`);
       }
@@ -281,7 +281,7 @@ export function useTriageSocket() {
 
   const acknowledgeAlert = useCallback(async (alertId: string) => {
     if (!USE_MOCK) {
-      await authFetch(`${API_BASE}/api/v1/alerts/${alertId}/ack`, {
+      await authFetch(`${getApiBase()}/api/v1/alerts/${alertId}/ack`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nurse_id: "nurse-01" }),
@@ -321,7 +321,7 @@ export function useTriageSocket() {
       return { display_name, patient_id: newPatient.patient_id };
     }
 
-    const response = await authFetch(`${API_BASE}/api/v1/intake`, {
+    const response = await authFetch(`${getApiBase()}/api/v1/intake`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -375,7 +375,7 @@ export function useTriageSocket() {
       });
       setActiveAlerts((prev) => prev.filter((a) => a.patient_id !== patientId));
     } else {
-      const response = await authFetch(`${API_BASE}/api/v1/patients/${patientId}`, {
+      const response = await authFetch(`${getApiBase()}/api/v1/patients/${patientId}`, {
         method: "DELETE",
       });
       if (!response.ok) {
