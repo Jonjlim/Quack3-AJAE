@@ -8,6 +8,7 @@ import { drawMirroredFrame } from "./camera-orientation";
 import {
   DISTRESS_LABEL,
   DISTRESS_STYLE,
+  drawPoseSkeleton,
   extractPoseFeatures,
   matchPoseTrackers,
   PoseDistressTracker,
@@ -18,10 +19,10 @@ const WASM_PATH = "/mediapipe/wasm";
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
-const NUM_POSES = 4;
-const MAX_TRACKERS = 6;
-const FRAME_SKIP = 2;
-const INFER_WIDTH = 640;
+const NUM_POSES = 16;
+const MAX_TRACKERS = 30;
+const FRAME_SKIP = 3;
+const INFER_WIDTH = 1280;
 
 const BOX_LANDMARKS = [0, 11, 12, 13, 14, 23, 24, 25, 26, 27, 28];
 
@@ -43,7 +44,7 @@ function getBoundingBox(lms: NormalizedLandmark[]): { x: number; y: number; w: n
   };
 }
 
-function drawBoxes(
+function drawOverlay(
   canvas: HTMLCanvasElement,
   poses: { lms: NormalizedLandmark[]; state: DistressState }[],
 ): void {
@@ -55,6 +56,7 @@ function drawBoxes(
   const H = canvas.height;
 
   for (const { lms, state } of poses) {
+    // Bounding box pass
     const box = getBoundingBox(lms);
     const style = DISTRESS_STYLE[state];
     const labelText = DISTRESS_LABEL[state];
@@ -81,6 +83,9 @@ function drawBoxes(
     ctx.fillRect(labelX - 2, labelY - 11, textW + 6, 14);
     ctx.fillStyle = "#ffffff";
     ctx.fillText(labelText, labelX + 1, labelY);
+
+    // Skeleton wireframe pass — drawn on top of the box
+    drawPoseSkeleton(ctx, canvas, lms, state, 1.5, 2.5);
   }
 }
 
@@ -107,12 +112,18 @@ export function createNurseFeedDetector(
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
         runningMode: "VIDEO",
         numPoses: NUM_POSES,
+        minPoseDetectionConfidence: 0.3,
+        minPosePresenceScore: 0.3,
+        minTrackingConfidence: 0.3,
       });
     } catch {
       landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
         runningMode: "VIDEO",
         numPoses: NUM_POSES,
+        minPoseDetectionConfidence: 0.3,
+        minPosePresenceScore: 0.3,
+        minTrackingConfidence: 0.3,
       });
     }
     if (!alive) {
@@ -147,27 +158,33 @@ export function createNurseFeedDetector(
       const result = landmarker.detectForVideo(offscreen, performance.now());
       const now = performance.now();
 
-      const detections = result.landmarks
+      const classifiedDetections = result.landmarks
         .map((lms) => {
           const features = extractPoseFeatures(lms);
           return features ? { lms, features } : null;
         })
         .filter((d): d is NonNullable<typeof d> => d != null);
 
-      const pairs = matchPoseTrackers(trackers, detections, MAX_TRACKERS);
+      const pairs = matchPoseTrackers(trackers, classifiedDetections, MAX_TRACKERS, now);
 
-      const drawList: { lms: NormalizedLandmark[]; state: DistressState }[] = [];
+      const trackedStateMap = new Map<NormalizedLandmark[], DistressState>();
 
       for (const { tracker, lms, features } of pairs) {
         const { state, confidence, shouldAlert } = tracker.update(features, now);
-        drawList.push({ lms, state });
+        trackedStateMap.set(lms, state);
 
         if (shouldAlert && onFall && state !== "safe") {
           onFall({ confidence, state });
         }
       }
 
-      drawBoxes(overlayCanvas, drawList);
+      // Draw every detected pose — classified or not
+      const drawList = result.landmarks.map((lms) => ({
+        lms,
+        state: trackedStateMap.get(lms) ?? ("safe" as DistressState),
+      }));
+
+      drawOverlay(overlayCanvas, drawList);
     };
     tick();
   })();

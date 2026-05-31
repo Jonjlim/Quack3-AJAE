@@ -101,7 +101,7 @@ export function RemoteVideo({
         {enableCV && (
           <canvas
             ref={canvasRef}
-            className="pointer-events-none absolute inset-0 h-full w-full"
+            className="pointer-events-none absolute inset-0 z-10 h-full w-full"
           />
         )}
       </div>

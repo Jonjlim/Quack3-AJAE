@@ -2,9 +2,8 @@
 
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
-import { drawMirroredFrame } from "./camera-orientation";
 import {
-  DISTRESS_STYLE,
+  drawPoseSkeleton,
   extractPoseFeatures,
   matchPoseTrackers,
   PoseDistressTracker,
@@ -23,40 +22,8 @@ const WASM_PATH = "/mediapipe/wasm";
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
-const NUM_POSES = 4;
-const MAX_TRACKERS = 6;
-
-const CONNECTIONS: [number, number][] = [
-  [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
-  [11, 23], [12, 24], [23, 24],
-  [23, 25], [25, 27], [27, 29], [27, 31],
-  [24, 26], [26, 28], [28, 30], [28, 32],
-];
-
-function drawSkeletonPose(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  lms: NormalizedLandmark[],
-  state: DistressState,
-): void {
-  const style = DISTRESS_STYLE[state];
-  ctx.strokeStyle = style.skeleton;
-  ctx.lineWidth = 2.5;
-  for (const [a, b] of CONNECTIONS) {
-    if (!lms[a] || !lms[b]) continue;
-    ctx.beginPath();
-    ctx.moveTo(lms[a].x * canvas.width, lms[a].y * canvas.height);
-    ctx.lineTo(lms[b].x * canvas.width, lms[b].y * canvas.height);
-    ctx.stroke();
-  }
-
-  ctx.fillStyle = style.dots;
-  for (const lm of lms) {
-    ctx.beginPath();
-    ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
+const NUM_POSES = 16;
+const MAX_TRACKERS = 30;
 
 function drawAllSkeletons(
   canvas: HTMLCanvasElement,
@@ -65,14 +32,23 @@ function drawAllSkeletons(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const pose of poses) {
-    drawSkeletonPose(ctx, canvas, pose.lms, pose.state);
+  for (const { lms, state } of poses) {
+    drawPoseSkeleton(ctx, canvas, lms, state);
   }
 }
 
 /**
- * Starts MediaPipe PoseLandmarker on `stream` and calls `onFall` on rapid fall or collapse.
+ * Starts MediaPipe PoseLandmarker on `stream` and calls `onFall` on collapse.
  * Optionally draws a skeleton overlay on `overlayCanvas`.
+ *
+ * Inference pipeline:
+ *  1. The raw local MediaStream is attached to a hidden <video> element — NO encode/decode
+ *     cycle, this is the highest-quality source available in the browser.
+ *  2. The video element is passed directly to PoseLandmarker.detectForVideo(), skipping
+ *     any intermediate canvas drawing step.
+ *  3. Camera feeds are typically front-facing (mirrored). CSS corrects the display via
+ *     `.camera-feed-correct > video { transform: scaleX(-1) }`. We apply the same
+ *     horizontal flip to landmark X coordinates so the overlay aligns with what's shown.
  */
 export function createBrowserFallDetector(
   stream: MediaStream,
@@ -83,9 +59,6 @@ export function createBrowserFallDetector(
   let rafId: number | null = null;
   let landmarker: PoseLandmarker | null = null;
   const trackers: PoseDistressTracker[] = [];
-
-  const inferCanvas = document.createElement("canvas");
-  const inferCtx = inferCanvas.getContext("2d");
 
   const vid = document.createElement("video");
   vid.srcObject = stream;
@@ -100,12 +73,18 @@ export function createBrowserFallDetector(
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
         runningMode: "VIDEO",
         numPoses: NUM_POSES,
+        minPoseDetectionConfidence: 0.3,
+        minPosePresenceScore: 0.3,
+        minTrackingConfidence: 0.3,
       });
     } catch {
       landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
         runningMode: "VIDEO",
         numPoses: NUM_POSES,
+        minPoseDetectionConfidence: 0.3,
+        minPosePresenceScore: 0.3,
+        minTrackingConfidence: 0.3,
       });
     }
     if (!alive) {
@@ -116,38 +95,38 @@ export function createBrowserFallDetector(
     const tick = () => {
       if (!alive || !landmarker) return;
 
-      if (vid.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      if (vid.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && vid.videoWidth && vid.videoHeight) {
         const canvas = overlayCanvas;
         if (canvas && (canvas.width !== vid.videoWidth || canvas.height !== vid.videoHeight)) {
           canvas.width = vid.videoWidth;
           canvas.height = vid.videoHeight;
         }
 
-        if (!inferCtx || !vid.videoWidth || !vid.videoHeight) {
-          rafId = requestAnimationFrame(tick);
-          return;
-        }
-        inferCanvas.width = vid.videoWidth;
-        inferCanvas.height = vid.videoHeight;
-        drawMirroredFrame(inferCtx, vid, inferCanvas.width, inferCanvas.height);
-
-        const result = landmarker.detectForVideo(inferCanvas, performance.now());
+        // Feed the raw video element directly — no intermediate canvas decode step.
+        const result = landmarker.detectForVideo(vid, performance.now());
         const now = performance.now();
 
-        const detections = result.landmarks
+        // Flip X to match CSS scaleX(-1) on the display video.
+        const landmarks = result.landmarks.map((lms) =>
+          lms.map((lm) => ({ ...lm, x: 1 - lm.x })),
+        );
+
+        // Extract features only for poses where key landmarks are visible enough.
+        // Unclassified poses are still drawn (state: "safe") so the overlay never flickers.
+        const classifiedDetections = landmarks
           .map((lms) => {
             const features = extractPoseFeatures(lms);
             return features ? { lms, features } : null;
           })
           .filter((d): d is NonNullable<typeof d> => d != null);
 
-        const pairs = matchPoseTrackers(trackers, detections, MAX_TRACKERS);
+        const pairs = matchPoseTrackers(trackers, classifiedDetections, MAX_TRACKERS, now);
 
-        const overlayPoses: { lms: NormalizedLandmark[]; state: DistressState }[] = [];
+        const trackedStateMap = new Map<NormalizedLandmark[], DistressState>();
 
         for (const { tracker, lms, features: feat } of pairs) {
           const { state, confidence, shouldAlert } = tracker.update(feat, now);
-          overlayPoses.push({ lms, state });
+          trackedStateMap.set(lms, state);
 
           if (shouldAlert) {
             onFall({
@@ -163,10 +142,18 @@ export function createBrowserFallDetector(
           }
         }
 
-        if (canvas && overlayPoses.length > 0) {
-          drawAllSkeletons(canvas, overlayPoses);
-        } else if (canvas) {
-          canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+        // Draw every detected pose — classified or not
+        const overlayPoses = landmarks.map((lms) => ({
+          lms,
+          state: trackedStateMap.get(lms) ?? ("safe" as DistressState),
+        }));
+
+        if (canvas) {
+          if (overlayPoses.length > 0) {
+            drawAllSkeletons(canvas, overlayPoses);
+          } else {
+            canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+          }
         }
       }
 

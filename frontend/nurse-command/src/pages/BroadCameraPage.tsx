@@ -140,11 +140,14 @@ export default function BroadCameraPage() {
                       muted
                       className="w-full"
                     />
+                    {/* Canvas must be inside camera-feed-correct so its containing block
+                        is the same div as the video — prevents stacking-context issues.
+                        The CSS rule only targets > video, so this canvas is NOT CSS-flipped. */}
+                    <canvas
+                      ref={canvasRef}
+                      className="pointer-events-none absolute inset-0 z-10 h-full w-full"
+                    />
                   </div>
-                  <canvas
-                    ref={canvasRef}
-                    className="pointer-events-none absolute inset-0 h-full w-full"
-                  />
                 </div>
                 <button
                   type="button"
