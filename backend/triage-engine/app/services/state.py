@@ -154,17 +154,20 @@ class StateService:
         )
         return self.add_alert(alert)
 
-    def create_demo_fall_alert(self) -> AlertEvent:
+    def create_fall_alert(self, message: str, patient_id: str | None = None) -> AlertEvent:
         alert = AlertEvent(
-            alert_id=f"alert-demo-fall-{int(datetime.now(timezone.utc).timestamp())}",
+            alert_id=f"alert-fall-{int(datetime.now(timezone.utc).timestamp())}",
             type=AlertType.CRITICAL_FALL,
             severity=AlertSeverity.CRITICAL,
-            patient_id=None,
-            message="Fall detected in waiting room sector B",
+            patient_id=patient_id,
+            message=message,
             acknowledged=False,
             created_at=datetime.now(timezone.utc),
         )
         return self.add_alert(alert)
+
+    def create_demo_fall_alert(self) -> AlertEvent:
+        return self.create_fall_alert("Fall detected in waiting room sector B")
 
 
 from app.mock_data import MOCK_PATIENTS

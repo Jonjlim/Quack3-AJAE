@@ -201,6 +201,87 @@ Demo fallback — fires a pre-baked `CRITICAL_FALL` alert (no network/CV require
 
 ---
 
+### `POST /api/v1/scene-intel/fall-detection`
+
+Run scene-intel fall detection on an uploaded video clip. If a fall is detected with sufficient confidence, fires a `CRITICAL_FALL` alert to the nurse dashboard (same path as demo trigger).
+
+**Request:** `multipart/form-data` with field `video` (mp4 or other video format)
+
+**Response `200` (no fall):**
+
+```json
+{
+  "analysis": {
+    "fall_detected": false,
+    "confidence": 0.12,
+    "danger_level": "low",
+    "coordinates": null,
+    "frame_timestamp": null
+  },
+  "alert": null,
+  "broadcast": false
+}
+```
+
+**Response `200` (fall detected):**
+
+```json
+{
+  "analysis": {
+    "fall_detected": true,
+    "confidence": 0.91,
+    "danger_level": "high",
+    "coordinates": {"x": 320, "y": 480},
+    "frame_timestamp": 2.4
+  },
+  "alert": {
+    "alert_id": "alert-demo-fall-1717099200",
+    "type": "CRITICAL_FALL",
+    "severity": "CRITICAL",
+    "patient_id": null,
+    "message": "Fall detected (confidence 91%, danger high) at coordinates (320, 480)",
+    "acknowledged": false,
+    "created_at": "2026-05-30T18:20:00Z"
+  },
+  "broadcast": true
+}
+```
+
+---
+
+### `POST /api/v1/scene-intel/rppg`
+
+Run scene-intel rPPG heart-rate analysis on a patient video clip. Applies biometrics to the patient record and broadcasts to nurses. Critical drops auto-fire `BIOMETRIC_DROP` alerts.
+
+**Request:** `multipart/form-data` with fields:
+- `patient_id` (string, required)
+- `video` (video file, required)
+
+**Response `200`:**
+
+```json
+{
+  "analysis": {
+    "heart_rate_bpm": 88.5,
+    "confidence": 0.9,
+    "signal_quality": "good",
+    "error": null
+  },
+  "biometric": {
+    "patient_id": "pat-002",
+    "heart_rate_bpm": 88.5,
+    "respiratory_rate_bpm": null,
+    "confidence": 0.9,
+    "source": "rppg",
+    "recorded_at": "2026-05-30T18:11:00Z"
+  },
+  "alert": null,
+  "broadcast": true
+}
+```
+
+---
+
 ## WebSocket Endpoints
 
 All messages use `TelemetryEnvelope`:
