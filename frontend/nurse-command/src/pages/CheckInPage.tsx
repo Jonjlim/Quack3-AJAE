@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { AcuityLevel } from "@shared/types/telemetry";
+import { CheckInQrModal } from "../components/CheckInQrModal";
 import type { CheckInData, CheckInResult } from "../hooks/useTriageSocket";
 import {
   ALERT_SENSITIVITY,
@@ -78,12 +79,6 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
   const [recentCheckins, setRecentCheckins] = useState<
     { name: string; patient_id: string; complaint: string; time: string }[]
   >([]);
-
-  useEffect(() => {
-    if (!successCheckin) return;
-    const id = setTimeout(() => setSuccessCheckin(null), 8000);
-    return () => clearTimeout(id);
-  }, [successCheckin]);
 
   function toggleComplaint(label: string) {
     setSelectedComplaints((prev) => {
@@ -205,18 +200,12 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
 
-      {/* Success toast */}
       {successCheckin && (
-        <div className="flex flex-shrink-0 flex-col gap-1 rounded-lg px-4 py-2"
-          style={{ background: "#f0fdf4", border: "1px solid #86efac" }}>
-          <p className="text-sm font-semibold" style={{ color: "#1e293b" }}>
-            <span style={{ color: "#15803d" }}>✓ {successCheckin.display_name}</span> checked in —
-            share this ID with the patient:
-          </p>
-          <p className="font-mono text-base font-bold tracking-wide" style={{ color: "#15803d" }}>
-            {successCheckin.patient_id}
-          </p>
-        </div>
+        <CheckInQrModal
+          displayName={successCheckin.display_name}
+          patientId={successCheckin.patient_id}
+          onClose={() => setSuccessCheckin(null)}
+        />
       )}
 
       {submitError && (

@@ -203,8 +203,8 @@ export default function App() {
               patients={patients}
               selectedPatientId={selectedPatient?.patient_id ?? null}
               onSelect={setSelectedPatient}
-              hrHistory={hrHistory}
               alertCountByPatient={alertCountByPatient}
+              getVideoForIdentity={liveKit.getVideoForIdentity}
             />
             <div className="min-w-0 flex-1">
               <WideAngleFeed

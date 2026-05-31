@@ -7,8 +7,8 @@ interface RemoteVideoProps {
   className?: string;
   label?: string;
   enableCV?: boolean;
-  /** Room feeds are large presenter tiles; patient feeds are compact thumbnails. */
-  feedRole?: "room" | "patient";
+  /** Room feeds are large presenter tiles; patient feeds show labels; thumbnails hide overlays. */
+  feedRole?: "room" | "patient" | "thumbnail";
 }
 
 export function RemoteVideo({
@@ -78,13 +78,16 @@ export function RemoteVideo({
   }, [enableCV, track, reportFall]);
 
   const isRoom = feedRole === "room";
+  const isThumbnail = feedRole === "thumbnail";
 
   return (
     <div
       className={`relative overflow-hidden ${
         isRoom
           ? "flex items-center justify-center bg-slate-950 ring-2 ring-violet-500/50"
-          : "ring-1 ring-sky-500/35"
+          : isThumbnail
+            ? "bg-slate-950"
+            : "ring-1 ring-sky-500/35"
       } ${className}`}
     >
       <div
@@ -105,41 +108,43 @@ export function RemoteVideo({
           />
         )}
       </div>
-      <div
-        className={`absolute z-10 flex items-center gap-1.5 ${
-          isRoom ? "bottom-3 left-3" : "bottom-1.5 left-1.5"
-        }`}
-      >
-        <span
-          className={`rounded font-bold uppercase tracking-wide ${
-            isRoom
-              ? "bg-violet-700/90 px-2 py-0.5 text-[10px] text-violet-100"
-              : "bg-sky-800/90 px-1.5 py-px text-[9px] text-sky-100"
+      {!isThumbnail && (
+        <div
+          className={`absolute z-10 flex items-center gap-1.5 ${
+            isRoom ? "bottom-3 left-3" : "bottom-1.5 left-1.5"
           }`}
         >
-          {isRoom ? "Room" : "Patient"}
-        </span>
-        {label && (
           <span
-            className={`rounded bg-black/70 text-white ${
-              isRoom ? "px-2.5 py-1 text-sm font-semibold" : "px-1.5 py-0.5 text-[10px]"
+            className={`rounded font-bold uppercase tracking-wide ${
+              isRoom
+                ? "bg-violet-700/90 px-2 py-0.5 text-[10px] text-violet-100"
+                : "bg-sky-800/90 px-1.5 py-px text-[9px] text-sky-100"
             }`}
           >
-            {label}
+            {isRoom ? "Room" : "Patient"}
           </span>
-        )}
-        {enableCV && (
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              cvReady
-                ? "bg-violet-900/80 text-violet-300"
-                : "animate-pulse bg-slate-800/80 text-slate-500"
-            }`}
-          >
-            {cvReady ? "CV" : "CV…"}
-          </span>
-        )}
-      </div>
+          {label && (
+            <span
+              className={`rounded bg-black/70 text-white ${
+                isRoom ? "px-2.5 py-1 text-sm font-semibold" : "px-1.5 py-0.5 text-[10px]"
+              }`}
+            >
+              {label}
+            </span>
+          )}
+          {enableCV && (
+            <span
+              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                cvReady
+                  ? "bg-violet-900/80 text-violet-300"
+                  : "animate-pulse bg-slate-800/80 text-slate-500"
+              }`}
+            >
+              {cvReady ? "CV" : "CV…"}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

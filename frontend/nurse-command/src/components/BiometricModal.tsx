@@ -121,7 +121,7 @@ export function BiometricModal({
       }}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-2xl"
+        className="w-full max-w-4xl overflow-hidden rounded-2xl"
         style={{
           background: "#ffffff",
           border: "1px solid #e2e8f0",
@@ -143,6 +143,9 @@ export function BiometricModal({
               </span>
             </div>
             <p className="text-sm" style={{ color: "var(--text-2)" }}>{patient.chief_complaint}</p>
+            <p className="mt-1 font-mono text-xs tracking-wide" style={{ color: "var(--text-muted)" }}>
+              {patient.patient_id}
+            </p>
             <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
               {patient.acuity.replace(/_/g, " ")} · {patient.status}
             </p>
@@ -157,7 +160,32 @@ export function BiometricModal({
           </button>
         </div>
 
-        <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
+        <div className="max-h-[85vh] space-y-4 overflow-y-auto p-5">
+          {patient.camera_enabled && (
+            <div
+              className="overflow-hidden rounded-xl"
+              style={{ background: "#0f172a", border: "1px solid #e2e8f0" }}
+            >
+              {patientVideo ? (
+                <RemoteVideo
+                  track={patientVideo.mediaStreamTrack}
+                  className="aspect-video w-full min-h-[280px]"
+                  label={patient.display_name}
+                />
+              ) : (
+                <div className="flex aspect-video min-h-[280px] flex-col items-center justify-center gap-2">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.35 }}>
+                    <rect x="8" y="14" width="32" height="22" rx="3" stroke="#94a3b8" strokeWidth="1.5" />
+                    <circle cx="24" cy="25" r="6" stroke="#94a3b8" strokeWidth="1.5" />
+                  </svg>
+                  <span className="text-sm font-medium" style={{ color: "#94a3b8" }}>
+                    Camera opted in — waiting for live feed
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {badge && (
             <div className="flex items-center gap-2">
               <span
@@ -272,27 +300,6 @@ export function BiometricModal({
               value={patient.camera_enabled ? "Opted in ✓" : "Opted out"}
             />
           </div>
-
-          {patient.camera_enabled && (
-            <div
-              className="overflow-hidden rounded-xl"
-              style={{ background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.08)", minHeight: 96 }}
-            >
-              {patientVideo ? (
-                <RemoteVideo
-                  track={patientVideo.mediaStreamTrack}
-                  className="aspect-video w-full"
-                  label={patient.display_name}
-                />
-              ) : (
-                <div className="flex h-24 items-center justify-center">
-                  <span className="text-[10px]" style={{ color: "var(--text-dim)" }}>
-                    Connect LiveKit feed on dashboard to view stream
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="flex gap-3 pt-1">
             <button
