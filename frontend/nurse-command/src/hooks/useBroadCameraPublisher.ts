@@ -7,7 +7,8 @@ import {
   type LocalVideoTrack,
 } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch, readApiError } from "../lib/auth-fetch";
+import { getApiBase } from "../lib/api-base";
 import {
   ER_WAITING_ROOM,
   roomCameraIdentity,
@@ -15,7 +16,6 @@ import {
 
 export type BroadCameraStatus = "starting" | "live" | "replaced" | "error" | "idle";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const ROOM_CAMERA_RESOLUTION = { width: 1280, height: 720 } as const;
 const ROOM_CAMERA_FRAME_RATE = 30;
 
@@ -89,7 +89,7 @@ export function useBroadCameraPublisher(roomLabel: string | null) {
 
     try {
       const identity = roomCameraIdentity(label);
-      const response = await authFetch(`${API_BASE}/api/v1/livekit/token`, {
+      const response = await authFetch(`${getApiBase()}/api/v1/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -99,7 +99,7 @@ export function useBroadCameraPublisher(roomLabel: string | null) {
           display_name: label,
         }),
       });
-      if (!response.ok) throw new Error("Could not obtain LiveKit token");
+      if (!response.ok) throw new Error(await readApiError(response));
 
       const tokenData = (await response.json()) as LiveKitTokenResponse;
       const lkRoom = new Room({ adaptiveStream: true, dynacast: true });

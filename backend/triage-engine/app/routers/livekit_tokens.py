@@ -24,8 +24,11 @@ async def create_livekit_token(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Nurse role required",
             )
-    if not settings.livekit_api_key or not settings.livekit_api_secret:
-        raise HTTPException(status_code=503, detail="LiveKit not configured")
+    if not settings.livekit_is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="LiveKit not configured — set LIVEKIT_API_KEY, LIVEKIT_API_SECRET, and LIVEKIT_URL on the server",
+        )
 
     grant = api.VideoGrants(
         room_join=True,

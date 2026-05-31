@@ -1,7 +1,7 @@
 "use client";
 
 import { assertCameraAvailable, cameraUnavailableMessage } from "@/lib/camera-utils";
-import { authFetch } from "@/lib/auth-fetch";
+import { authFetch, readApiError } from "@/lib/auth-fetch";
 import { getApiBase } from "@/lib/api-base";
 import type { BiometricReading, LiveKitTokenResponse } from "@shared/types/telemetry";
 import { useRppgSampler } from "@/lib/useRppgSampler";
@@ -146,7 +146,9 @@ export function useCameraSession({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ room: roomName, identity, role: "patient" }),
       });
-      if (!response.ok) throw new Error("Token request failed");
+      if (!response.ok) {
+        throw new Error(await readApiError(response));
+      }
 
       const tokenData = (await response.json()) as LiveKitTokenResponse;
       const lkRoom = new Room({ adaptiveStream: true, dynacast: true });

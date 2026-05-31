@@ -16,28 +16,34 @@ export function StickyAlertPanel({ alerts, onAcknowledge }: StickyAlertPanelProp
 
   return (
     <aside
-      className="fixed inset-x-0 top-0 z-50 border-b-2 border-[var(--status-critical)] bg-red-50"
+      className="fixed inset-x-0 top-0 z-50 shadow-lg"
+      style={{
+        background: "rgba(254, 242, 242, 0.96)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "2px solid rgba(220,38,38,0.35)",
+      }}
     >
-      <div className="mx-auto max-w-7xl px-3 py-2">
-        <p className="telemetry-label text-[var(--status-critical)]">
-          Critical Alert — Manual Triage Required
+      <div className="mx-auto max-w-7xl px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#E24B4A" }}>
+          ⚠ Critical Alert — Manual Triage Required
         </p>
-        <ul className="mt-1 space-y-px">
+        <ul className="mt-2 space-y-2">
           {criticalAlerts.map((alert) => (
             <li
               key={alert.alert_id}
-              className="flex items-center justify-between gap-3 border border-[var(--status-critical)] bg-[var(--surface)] px-3 py-2"
+              className="flex items-center justify-between gap-4 rounded-xl px-4 py-3"
+              style={{ background: "rgba(226,75,74,0.10)", border: "1px solid rgba(226,75,74,0.22)" }}
             >
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--status-critical)]">
-                  {alert.type.replace(/_/g, " ")}
-                </p>
-                <p className="text-[11px] text-[var(--text-2)]">{alert.message}</p>
+                <p className="text-sm font-semibold text-white">{alert.type.replace(/_/g, " ")}</p>
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.60)" }}>{alert.message}</p>
               </div>
               <button
                 type="button"
                 onClick={() => onAcknowledge(alert.alert_id)}
-                className="shrink-0 border border-[var(--status-critical)] bg-[var(--status-critical)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white hover:opacity-90"
+                className="shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ background: "#E24B4A", color: "white" }}
               >
                 Acknowledge
               </button>

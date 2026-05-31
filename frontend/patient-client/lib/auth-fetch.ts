@@ -2,6 +2,18 @@ import { getIdToken, isFirebaseAuthEnabled } from "@/lib/firebase";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 
+/** Extract a human-readable message from a FastAPI error response. */
+export async function readApiError(response: Response): Promise<string> {
+  const text = await response.text();
+  try {
+    const body = JSON.parse(text) as { detail?: string };
+    if (typeof body.detail === "string") return body.detail;
+  } catch {
+    // not JSON
+  }
+  return text.trim() || `Request failed (${response.status})`;
+}
+
 export async function authFetch(
   input: RequestInfo | URL,
   init?: RequestInit,

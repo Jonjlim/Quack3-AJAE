@@ -26,11 +26,11 @@ interface BiometricModalProps {
 }
 
 const ACUITY_COLOR: Record<AcuityLevel, string> = {
-  RESUSCITATION: "#dc2626",
-  EMERGENT: "#dc2626",
-  URGENT: "#d97706",
-  LESS_URGENT: "#15803d",
-  NON_URGENT: "#15803d",
+  RESUSCITATION: "#E24B4A",
+  EMERGENT: "#E24B4A",
+  URGENT: "#BA7517",
+  LESS_URGENT: "#639922",
+  NON_URGENT: "#639922",
 };
 
 const ACUITY_TRIAGE: Record<AcuityLevel, number> = {
@@ -53,12 +53,12 @@ function confidenceBadge(bio: BiometricReading | null | undefined): {
 } | null {
   if (!bio || bio.confidence <= 0) return null;
   if (bio.measurement_status === "reliable" || bio.confidence >= 0.65) {
-    return { label: "Reliable", color: "#15803d" };
+    return { label: "Reliable", color: "#639922" };
   }
   if (bio.measurement_status === "estimated" || bio.confidence >= 0.5) {
-    return { label: "Estimated", color: "#d97706" };
+    return { label: "Estimated", color: "#BA7517" };
   }
-  return { label: "Low confidence", color: "#6b7280" };
+  return { label: "Low confidence", color: "#64748b" };
 }
 
 function hrVitalDisplay(bio: BiometricReading | null | undefined): string {
@@ -109,119 +109,132 @@ export function BiometricModal({
       : 0,
   }));
   const baselineHr = hrData.length > 0 ? hrData[0].heart_rate_bpm : null;
-  const acuityColor = ACUITY_COLOR[patient.acuity] ?? "#15803d";
+  const acuityColor = ACUITY_COLOR[patient.acuity] ?? "#639922";
   const triageNum = ACUITY_TRIAGE[patient.acuity] ?? 5;
   const badge = confidenceBadge(latest);
   const hrMuted = (latest?.confidence ?? 0) < 0.5 || latest?.measurement_status === "unreliable";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(15,23,42,0.50)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="panel flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden">
-        <div className="panel-header flex flex-shrink-0 items-start justify-between">
+      <div
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl"
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.20), 0 8px 20px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div
+          className="flex flex-shrink-0 items-start justify-between px-5 py-5"
+          style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}
+        >
           <div>
-            <div className="mb-1 flex items-center gap-2">
-              <span className="text-sm font-semibold text-[var(--text)]">{patient.display_name}</span>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-2xl font-black" style={{ color: "var(--text)" }}>{patient.display_name}</span>
               <span
-                className="telemetry-value border px-1 py-px text-[10px] font-bold"
-                style={{ borderColor: acuityColor, color: acuityColor }}
+                className="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                style={{ background: acuityColor + "18", color: acuityColor }}
               >
                 T{triageNum}
               </span>
             </div>
-            <p className="text-[11px] text-[var(--text-2)]">{patient.chief_complaint}</p>
-            <p className="telemetry-value mt-0.5 text-[10px] text-[var(--text-muted)]">
+            <p className="text-sm" style={{ color: "var(--text-2)" }}>{patient.chief_complaint}</p>
+            <p className="mt-1 font-mono text-xs tracking-wide" style={{ color: "var(--text-muted)" }}>
               {patient.patient_id}
             </p>
-            <p className="telemetry-label mt-0.5 text-[var(--text-dim)]">
+            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
               {patient.acuity.replace(/_/g, " ")} · {patient.status}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--surface-2)] text-xs text-[var(--text-muted)] hover:bg-[var(--surface)]"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm transition-all"
+            style={{ color: "var(--text-muted)", background: "#f1f5f9" }}
           >
             ✕
           </button>
         </div>
 
         {patientVideo && (
-          <div className="flex flex-shrink-0 items-center justify-center border-b border-[var(--border)] bg-black">
+          <div
+            className="flex flex-shrink-0 items-center justify-center bg-slate-950"
+            style={{ borderBottom: "1px solid #e2e8f0" }}
+          >
             <RemoteVideo
               track={patientVideo.mediaStreamTrack}
-              className="aspect-video max-h-[min(36vh,380px)] w-full"
+              className="aspect-video max-h-[min(40vh,420px)] w-full"
               label={patient.display_name}
               objectFit="contain"
             />
           </div>
         )}
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           {badge && (
             <div className="flex items-center gap-2">
               <span
-                className="border px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest"
-                style={{ borderColor: badge.color, color: badge.color }}
+                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                style={{ background: badge.color + "14", color: badge.color, border: `1px solid ${badge.color}28` }}
               >
                 Vitals · {badge.label}
               </span>
               {latest && latest.confidence > 0 && (
-                <span className="telemetry-value text-[9px] text-[var(--text-dim)]">
-                  {Math.round(latest.confidence * 100)}% conf
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                  {Math.round(latest.confidence * 100)}% confidence
                 </span>
               )}
             </div>
           )}
-
-          <div className="grid grid-cols-3 gap-px bg-[var(--border-subtle)]">
+          <div className="grid grid-cols-3 gap-3">
             <VitalCard
               label="Heart Rate"
               value={hrVitalDisplay(latest)}
-              unit="BPM"
-              color={hrMuted ? "#6b7280" : acuityColor}
+              unit="bpm"
+              color={hrMuted ? "#64748b" : acuityColor}
             />
             <VitalCard
               label="Resp. Rate"
               value={
                 latest?.respiratory_rate_bpm != null ? String(latest.respiratory_rate_bpm) : "—"
               }
-              unit="BR/MIN"
-              color="#374151"
+              unit="br/min"
+              color="#60a5fa"
             />
             <VitalCard
               label="Waiting"
               value={formatWait(patient.wait_minutes)}
               unit=""
-              color="#6b7280"
+              color="#94a3b8"
             />
           </div>
 
           {chartData.length > 1 && (
-            <div className="border border-[var(--border-subtle)] bg-[var(--surface)] p-2">
-              <p className="telemetry-label mb-1">
-                HR Trend — {chartData.length} readings
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                HR Trend — last {chartData.length} readings (shaded = CI)
               </p>
-              <div style={{ height: 110 }}>
+              <div style={{ height: 130 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                  <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
                     <XAxis dataKey="recorded_at" hide />
                     <YAxis
                       domain={["auto", "auto"]}
-                      tick={{ fill: "#9ca3af", fontSize: 9, fontFamily: "ui-monospace, monospace" }}
-                      width={32}
+                      tick={{ fill: "#94a3b8", fontSize: 10 }}
+                      width={36}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#fafafa",
-                        border: "1px solid #b8bcc4",
-                        borderRadius: "0",
-                        fontSize: "11px",
-                        fontFamily: "ui-monospace, monospace",
+                        background: "rgba(255,255,255,0.96)",
+                        border: "1px solid rgba(0,0,0,0.10)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
                         color: "#111827",
                       }}
                       formatter={(v: unknown, name: string) => {
@@ -235,9 +248,9 @@ export function BiometricModal({
                     {baselineHr != null && (
                       <ReferenceLine
                         y={baselineHr}
-                        stroke="#dc2626"
-                        strokeDasharray="3 2"
-                        strokeOpacity={0.5}
+                        stroke="#E24B4A"
+                        strokeDasharray="4 2"
+                        strokeOpacity={0.6}
                       />
                     )}
                     <Area
@@ -245,24 +258,24 @@ export function BiometricModal({
                       dataKey="hr_high"
                       stroke="none"
                       fill={acuityColor}
-                      fillOpacity={0.12}
+                      fillOpacity={0.15}
                       isAnimationActive={false}
                     />
                     <Area
                       type="monotone"
                       dataKey="hr_low"
                       stroke="none"
-                      fill="#fafafa"
+                      fill="#ffffff"
                       fillOpacity={1}
                       isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
                       dataKey="heart_rate_bpm"
-                      stroke={hrMuted ? "#6b7280" : acuityColor}
-                      strokeWidth={1.5}
-                      dot={{ fill: hrMuted ? "#6b7280" : acuityColor, r: 2 }}
-                      activeDot={{ r: 3 }}
+                      stroke={hrMuted ? "#64748b" : acuityColor}
+                      strokeWidth={2}
+                      dot={{ fill: hrMuted ? "#64748b" : acuityColor, r: 2.5 }}
+                      activeDot={{ r: 4 }}
                       isAnimationActive={false}
                     />
                   </ComposedChart>
@@ -271,19 +284,24 @@ export function BiometricModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-px bg-[var(--border-subtle)]">
-            <InfoRow label="Queue Position" value={`#${patient.queue_position}`} mono />
+          <div className="grid grid-cols-2 gap-3">
+            <InfoRow label="Queue Position" value={`#${patient.queue_position}`} />
             <InfoRow
               label="Camera"
               value={patientVideo ? "Live — patient opted in" : "Off — patient controls in app"}
             />
           </div>
 
-          <div className="flex gap-px bg-[var(--border-subtle)]">
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={() => setShowCasefile(true)}
-              className="flex-1 border border-[var(--border)] bg-[var(--surface-2)] py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-2)] hover:bg-[var(--surface)]"
+              className="flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: "#3b82f618",
+                color: "#60a5fa",
+                border: "1px solid #3b82f645",
+              }}
             >
               Case File
             </button>
@@ -293,7 +311,12 @@ export function BiometricModal({
                 onEscalate(patient.patient_id);
                 onClose();
               }}
-              className="flex-1 border border-[var(--status-critical)] bg-red-50 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--status-critical)] hover:bg-red-100"
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: "rgba(220,38,38,0.08)",
+                color: "var(--critical)",
+                border: "1px solid rgba(220,38,38,0.22)",
+              }}
             >
               Escalate
             </button>
@@ -303,7 +326,12 @@ export function BiometricModal({
                 onMarkStable(patient.patient_id);
                 onClose();
               }}
-              className="flex-1 border border-[var(--status-stable)] bg-green-50 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--status-stable)] hover:bg-green-100"
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: "rgba(22,163,74,0.08)",
+                color: "#15803d",
+                border: "1px solid rgba(22,163,74,0.22)",
+              }}
             >
               Mark Stable
             </button>
@@ -321,13 +349,19 @@ export function BiometricModal({
                 onClose();
               }
             }}
-            className="w-full border border-[var(--border)] bg-[var(--surface-2)] py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] hover:bg-[var(--surface)]"
+            className="w-full rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{
+              background: "#f8fafc",
+              color: "#64748b",
+              border: "1px solid #e2e8f0",
+            }}
           >
             Remove from queue
           </button>
         </div>
       </div>
 
+      {/* Casefile report modal */}
       {showCasefile && (
         <CasefileReportModal
           patientId={patient.patient_id}
@@ -351,25 +385,27 @@ function VitalCard({
   color: string;
 }) {
   return (
-    <div className="bg-[var(--surface)] p-2">
-      <p className="telemetry-label mb-0.5">{label}</p>
-      <p className="telemetry-value text-lg font-medium leading-none" style={{ color }}>
+    <div
+      className="rounded-xl p-4"
+      style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
+    >
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{label}</p>
+      <p className="text-2xl font-black leading-none" style={{ color }}>
         {value}
-        {unit && (
-          <span className="ml-1 text-[9px] font-normal text-[var(--text-dim)]">{unit}</span>
-        )}
+        {unit && <span className="ml-1 text-sm font-medium" style={{ color: "var(--text-muted)" }}>{unit}</span>}
       </p>
     </div>
   );
 }
 
-function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[var(--surface)] p-2">
-      <p className="telemetry-label">{label}</p>
-      <p className={`mt-0.5 text-[11px] text-[var(--text)] ${mono ? "telemetry-value" : ""}`}>
-        {value}
-      </p>
+    <div
+      className="rounded p-2.5"
+      style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
+    >
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</p>
+      <p className="mt-0.5 text-sm font-medium" style={{ color: "var(--text)" }}>{value}</p>
     </div>
   );
 }

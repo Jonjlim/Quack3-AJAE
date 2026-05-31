@@ -15,11 +15,11 @@ const ACUITY_META: Record<
   AcuityLevel,
   { triageNum: number; triageColor: string; statusColor: string; statusLabel: string }
 > = {
-  RESUSCITATION: { triageNum: 1, triageColor: "#dc2626", statusColor: "#dc2626", statusLabel: "URGENT" },
-  EMERGENT:      { triageNum: 2, triageColor: "#ea580c", statusColor: "#dc2626", statusLabel: "URGENT" },
-  URGENT:        { triageNum: 3, triageColor: "#d97706", statusColor: "#d97706", statusLabel: "WATCH"  },
-  LESS_URGENT:   { triageNum: 4, triageColor: "#15803d", statusColor: "#15803d", statusLabel: "STABLE" },
-  NON_URGENT:    { triageNum: 5, triageColor: "#6b7280", statusColor: "#15803d", statusLabel: "STABLE" },
+  RESUSCITATION: { triageNum: 1, triageColor: "#E24B4A", statusColor: "#E24B4A", statusLabel: "URGENT" },
+  EMERGENT:      { triageNum: 2, triageColor: "#f97316", statusColor: "#E24B4A", statusLabel: "URGENT" },
+  URGENT:        { triageNum: 3, triageColor: "#eab308", statusColor: "#BA7517", statusLabel: "WATCH"  },
+  LESS_URGENT:   { triageNum: 4, triageColor: "#22c55e", statusColor: "#639922", statusLabel: "STABLE" },
+  NON_URGENT:    { triageNum: 5, triageColor: "#3b82f6", statusColor: "#639922", statusLabel: "STABLE" },
 };
 
 function formatHrDisplay(bio: BiometricReading | null | undefined): { value: string; muted: boolean } {
@@ -63,16 +63,22 @@ export function PatientCard({
     <button
       type="button"
       onClick={() => onSelect(patient)}
-      className={`w-full border border-l-2 bg-[var(--surface)] text-left transition-colors ${
-        isSelected
-          ? "border-[var(--text-muted)] bg-[var(--surface-2)]"
-          : "border-[var(--border-subtle)] hover:bg-[var(--surface-2)]"
-      }`}
-      style={{ borderLeftColor: meta.triageColor, borderLeftWidth: 2 }}
+      className="w-full rounded-2xl text-left transition-all duration-200"
+      style={{
+        background: isSelected ? "#eff6ff" : "#ffffff",
+        borderTop: `1px solid ${isSelected ? "rgba(37,99,235,0.25)" : "#e2e8f0"}`,
+        borderRight: `1px solid ${isSelected ? "rgba(37,99,235,0.25)" : "#e2e8f0"}`,
+        borderBottom: `1px solid ${isSelected ? "rgba(37,99,235,0.25)" : "#e2e8f0"}`,
+        borderLeft: `3px solid ${meta.triageColor}`,
+        boxShadow: isSelected ? "0 2px 8px rgba(37,99,235,0.12)" : "0 1px 4px rgba(0,0,0,0.06)",
+      }}
     >
-      <div className="relative px-2 py-1.5">
+      <div className="relative px-3 py-2.5">
         {showCamera && (
-          <div className="absolute right-2 top-1.5 h-12 w-[4rem] overflow-hidden border border-[var(--border)] bg-black">
+          <div
+            className="absolute right-3 top-2.5 h-14 w-[4.5rem] overflow-hidden rounded-lg"
+            style={{ background: "#0f172a", border: "1px solid #e2e8f0" }}
+          >
             <RemoteVideo
               track={patientVideo!.mediaStreamTrack}
               className="h-full w-full"
@@ -81,56 +87,54 @@ export function PatientCard({
           </div>
         )}
 
-        <div className={showCamera ? "pr-[4.5rem]" : undefined}>
-          <div className="mb-0.5 flex items-start justify-between gap-1">
+        <div className={showCamera ? "pr-[5.25rem]" : undefined}>
+          <div className="mb-1 flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold leading-snug text-[var(--text)]">
+              <span className="block truncate text-sm font-bold leading-snug" style={{ color: "var(--text)" }}>
                 {patient.display_name}
               </span>
-              <span className="telemetry-value block truncate text-[9px] text-[var(--text-muted)]">
+              <span className="block truncate font-mono text-[10px] tracking-wide" style={{ color: "var(--text-muted)" }}>
                 {patient.patient_id}
               </span>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1.5">
               {alertCount > 0 && (
-                <span className="telemetry-value flex h-3.5 min-w-3.5 items-center justify-center bg-[var(--status-critical)] px-0.5 text-[9px] font-bold text-white">
+                <span
+                  className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                  style={{ background: "#E24B4A" }}
+                >
                   {alertCount}
                 </span>
               )}
               <span
-                className="border px-1 py-px text-[9px] font-semibold uppercase tracking-wide"
-                style={{
-                  borderColor: meta.statusColor,
-                  color: meta.statusColor,
-                  background: "transparent",
-                }}
+                className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ background: meta.statusColor + "20", color: meta.statusColor }}
               >
                 {meta.statusLabel}
               </span>
             </div>
           </div>
 
-          <p className="mb-1 line-clamp-1 text-[10px] text-[var(--text-2)]">
+          <p className="mb-1.5 line-clamp-1 text-[11px]" style={{ color: "var(--text-2)" }}>
             {patient.chief_complaint}
           </p>
 
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span
-              className="telemetry-value border px-1 py-px text-[9px] font-bold"
-              style={{ borderColor: meta.triageColor, color: meta.triageColor }}
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+              style={{ background: meta.triageColor + "25", color: meta.triageColor }}
             >
               T{meta.triageNum}
             </span>
             <span
-              className={`telemetry-value text-sm font-medium ${
-                hrDisplay.muted ? "text-[var(--text-dim)]" : "text-[var(--status-alert)]"
-              }`}
+              className="shrink-0 tabular-nums font-black"
+              style={{ fontSize: "1rem", color: hrDisplay.muted ? "var(--text-dim)" : "var(--amber)" }}
             >
               {hrDisplay.value}
-              <span className="ml-0.5 text-[9px] font-normal text-[var(--text-dim)]">BPM</span>
+              <span className="ml-0.5 text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>bpm</span>
             </span>
-            <span className="telemetry-value text-[9px] text-[var(--text-muted)]">
-              {formatElapsed(patient.wait_minutes, extraSeconds)}
+            <span className="shrink-0 text-[10px] whitespace-nowrap font-medium" style={{ color: "var(--text-muted)" }}>
+              ⏱ {formatElapsed(patient.wait_minutes, extraSeconds)}
             </span>
           </div>
         </div>
