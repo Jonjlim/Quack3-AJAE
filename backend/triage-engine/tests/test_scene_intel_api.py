@@ -110,3 +110,13 @@ class TestSceneIntelRppg:
             files={"video": ("face.mp4", b"fake-video-bytes", "video/mp4")},
         )
         assert response.status_code == 404
+
+    @patch("app.routers.scene_intel.run_rppg_analysis")
+    def test_rppg_rejects_camera_opt_out(self, mock_run: MagicMock, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/scene-intel/rppg",
+            data={"patient_id": "pat-001"},
+            files={"video": ("face.mp4", b"fake-video-bytes", "video/mp4")},
+        )
+        assert response.status_code == 403
+        mock_run.assert_not_called()
