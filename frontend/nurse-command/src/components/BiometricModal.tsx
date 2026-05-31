@@ -135,6 +135,9 @@ export function BiometricModal({
           <div>
             <div className="mb-2 flex items-center gap-2">
               <span className="text-2xl font-black" style={{ color: "var(--text)" }}>{patient.display_name}</span>
+              <span className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>
+                {patient.patient_id}
+              </span>
               <span
                 className="rounded-full px-2.5 py-0.5 text-xs font-bold"
                 style={{ background: acuityColor + "18", color: acuityColor }}

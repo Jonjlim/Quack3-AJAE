@@ -18,9 +18,9 @@ load_dotenv(_ENV_PATH)
 _client = None
 
 # ── Model constants (change these to switch models) ──────────────────────────
-VIDEO_MODEL = "gemini-2.5-flash"
-TEXT_MODEL = "gemini-2.5-flash"
-AUDIO_MODEL = "gemini-2.5-flash"
+VIDEO_MODEL = "gemini-3.1-flash-lite"
+TEXT_MODEL = "gemini-3.1-flash-lite"
+AUDIO_MODEL = "gemini-3.1-flash-lite"
 
 
 class GeminiNotConfiguredError(RuntimeError):

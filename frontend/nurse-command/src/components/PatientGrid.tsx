@@ -51,7 +51,7 @@ export function PatientGrid({
 
   return (
     <aside
-      className="flex w-72 flex-shrink-0 flex-col"
+      className="flex w-80 flex-shrink-0 flex-col"
       style={{
         background: "#ffffff",
         border: "1px solid #e2e8f0",
@@ -63,10 +63,10 @@ export function PatientGrid({
         className="px-4 py-4"
         style={{ borderBottom: "1px solid #e2e8f0" }}
       >
-        <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Patient Queue</h2>
-        <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>{patients.length} patients</p>
+        <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>Patient Queue</h2>
+        <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>{patients.length} patients</p>
       </header>
-      <div className="flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {sorted.map((patient) => (
           <PatientCard
             key={patient.patient_id}
