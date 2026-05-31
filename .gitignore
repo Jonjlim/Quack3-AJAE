@@ -76,7 +76,7 @@ frontend/patient-client/certificates/
 *.tsbuildinfo
 .turbo/
 
-package-lock.json
+*package-lock.json
 
 # MediaPipe model files (downloaded locally)
 *.task

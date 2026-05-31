@@ -15,8 +15,6 @@ interface CheckInTabProps {
   onSubmit: (data: CheckInData) => Promise<CheckInResult>;
 }
 
-// ─── Visual-only constants ────────────────────────────────────────────────────
-
 const TRIAGE_CONFIG: Record<
   AcuityLevel,
   { num: number; label: string; desc: string; color: string; dimBg: string; dimText: string }
@@ -29,9 +27,6 @@ const TRIAGE_CONFIG: Record<
 };
 
 const ACUITY_ORDER: AcuityLevel[] = ["RESUSCITATION", "EMERGENT", "URGENT", "LESS_URGENT", "NON_URGENT"];
-
-
-// ─── Logic (unchanged) ────────────────────────────────────────────────────────
 
 const ACUITY_SEVERITY: Record<AcuityLevel, number> = {
   RESUSCITATION: 0, EMERGENT: 1, URGENT: 2, LESS_URGENT: 3, NON_URGENT: 4,
@@ -52,6 +47,18 @@ function mostCriticalAcuity(labels: string[]): AcuityLevel | null {
 
 function currentTimeStr() {
   return new Date().toTimeString().slice(0, 5);
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-4 text-sm font-bold uppercase tracking-wider" style={{ color: "#1e293b" }}>
+      {children}
+    </h2>
+  );
+}
+
+function Divider() {
+  return <div className="my-5" style={{ borderTop: "1.5px solid #cbd5e1" }} />;
 }
 
 export function CheckInTab({ onSubmit }: CheckInTabProps) {
@@ -78,6 +85,8 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
   const [recentCheckins, setRecentCheckins] = useState<
     { name: string; patient_id: string; complaint: string; time: string }[]
   >([]);
+
+  const [showAiConfig, setShowAiConfig] = useState(false);
 
   useEffect(() => {
     if (!successCheckin) return;
@@ -200,306 +209,320 @@ export function CheckInTab({ onSubmit }: CheckInTabProps) {
   const submitColor = acuity ? TRIAGE_CONFIG[acuity].color : "#2563eb";
   const activeTriageColor = acuity ? TRIAGE_CONFIG[acuity].color : "#3b82f6";
 
-  // ─── Layout ───────────────────────────────────────────────────────────────
-
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
+    <div className="flex flex-1 flex-col overflow-hidden">
 
       {/* Success toast */}
       {successCheckin && (
-        <div className="flex flex-shrink-0 flex-col gap-1 rounded-lg px-4 py-2"
-          style={{ background: "#f0fdf4", border: "1px solid #86efac" }}>
-          <p className="text-sm font-semibold" style={{ color: "#1e293b" }}>
-            <span style={{ color: "#15803d" }}>✓ {successCheckin.display_name}</span> checked in —
-            share this ID with the patient:
-          </p>
-          <p className="font-mono text-base font-bold tracking-wide" style={{ color: "#15803d" }}>
-            {successCheckin.patient_id}
-          </p>
+        <div className="mx-6 mt-4 flex items-center gap-4 rounded-xl px-5 py-4"
+          style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+          <span className="text-2xl" style={{ color: "#22c55e" }}>&#10003;</span>
+          <div className="flex-1">
+            <p className="text-base font-semibold" style={{ color: "#15803d" }}>
+              {successCheckin.display_name} checked in
+            </p>
+            <p className="font-mono text-sm tracking-wide" style={{ color: "#166534" }}>
+              Patient ID: {successCheckin.patient_id}
+            </p>
+          </div>
+          <button type="button" onClick={() => setSuccessCheckin(null)}
+            className="text-lg" style={{ color: "#86efac" }}>
+            &#10005;
+          </button>
         </div>
       )}
 
       {submitError && (
-        <p className="flex-shrink-0 rounded-lg px-4 py-2 text-sm"
-          style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626" }}>
+        <p className="mx-6 mt-4 rounded-xl px-5 py-3 text-base"
+          style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626" }}>
           {submitError}
         </p>
       )}
 
-      {/* Row 1 — patient info bar */}
-      <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5"
-        style={{ background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-          placeholder="Patient name"
-          className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
-        <div className="h-4 w-px bg-slate-200" />
-        <input type="number" value={age} onChange={(e) => setAge(e.target.value)}
-          placeholder="Age" min={0} max={120}
-          className="w-14 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
-        <div className="h-4 w-px bg-slate-200" />
-        <div className="flex gap-1">
-          {(["M", "F", "NB"] as const).map((s) => {
-            const full = s === "M" ? "Male" : s === "F" ? "Female" : "Non-binary";
-            const on = sex === full;
-            return (
-              <button key={s} type="button" onClick={() => setSex(on ? "" : full)}
-                className="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
-                style={{
-                  background: on ? "#3b82f620" : "transparent",
-                  color: on ? "#3b82f6" : "#475569",
-                  border: `1px solid ${on ? "#3b82f650" : "transparent"}`,
-                }}>
-                {s}
-              </button>
-            );
-          })}
-        </div>
-        <div className="h-4 w-px bg-slate-200" />
-        <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)}
-          className="bg-transparent text-sm text-slate-600 outline-none"
-          style={{ colorScheme: "light" }} />
-        {recentCheckins.length > 0 && (
-          <>
-            <div className="h-4 w-px bg-slate-200" />
-            <div className="flex gap-2">
-              {recentCheckins.slice(0, 3).map((c, i) => (
-                <span key={i} className="rounded px-2 py-0.5 font-mono text-xs font-medium"
-                  style={{ background: "#63992218", color: "#639922", border: "1px solid #63992230" }}
-                  title={c.name}>
-                  {c.patient_id}
-                </span>
-              ))}
+      {/* Two-panel layout */}
+      <div className="flex flex-1 gap-6 overflow-hidden p-6">
+
+        {/* ═══════ LEFT PANEL: Primary form ═══════ */}
+        <div className="flex flex-[2] flex-col overflow-y-auto rounded-2xl p-6"
+          style={{ background: "#ffffff", border: "1px solid #cbd5e1" }}>
+
+          {/* Chief complaint */}
+          <section>
+            <SectionLabel>
+              Chief complaint <span style={{ color: "#E24B4A" }}>*</span>
+            </SectionLabel>
+            <div className="grid grid-cols-3 gap-3">
+              {COMPLAINT_TILES.map((tile) => {
+                const active = selectedComplaints.has(tile.label);
+                return (
+                  <button key={tile.label} type="button" onClick={() => toggleComplaint(tile.label)}
+                    className="rounded-xl py-5 text-center text-lg font-medium transition-all"
+                    style={{
+                      background: active ? activeTriageColor + "12" : "#ffffff",
+                      color: active ? activeTriageColor : "#1e293b",
+                      border: `2px solid ${active ? activeTriageColor : "#cbd5e1"}`,
+                      fontWeight: active ? 700 : 500,
+                    }}>
+                    {tile.label}
+                  </button>
+                );
+              })}
             </div>
-          </>
-        )}
-      </div>
+            {selectedComplaints.has("Other") && (
+              <textarea rows={2} value={otherDetail}
+                onChange={(e) => setOtherDetail(e.target.value)}
+                placeholder="Describe the complaint..."
+                className="mt-4 w-full resize-none rounded-xl px-4 py-3 text-base outline-none"
+                style={{ background: "#ffffff", border: "1.5px solid #94a3b8", color: "#0f172a" }} />
+            )}
+            {errors.complaint && (
+              <p className="mt-2 text-sm" style={{ color: "#E24B4A" }}>{errors.complaint}</p>
+            )}
+          </section>
 
-      {/* Row 2 — chief complaint tiles (5 × 2 grid, h-14 each) */}
-      <div className="flex-shrink-0">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Chief complaint <span style={{ color: "#E24B4A" }}>*</span>
-          </p>
-          {selectedComplaints.size > 0 && (
-            <p className="text-xs text-slate-500">
-              {selectedComplaints.size > 1 ? `${selectedComplaints.size} selected` : Array.from(selectedComplaints)[0]}
-            </p>
-          )}
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {COMPLAINT_TILES.map((tile) => {
-            const active = selectedComplaints.has(tile.label);
-            const cfg = tile.suggestedAcuity ? TRIAGE_CONFIG[tile.suggestedAcuity] : null;
-            const tileColor = cfg?.color ?? "#3b82f6";
-            return (
-              <button key={tile.label} type="button" onClick={() => toggleComplaint(tile.label)}
-                className="relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-lg text-center transition-all"
-                style={{
-                  background: active ? tileColor + "15" : "#f8fafc",
-                  border: `1px solid ${active ? tileColor + "60" : "#e2e8f0"}`,
-                }}>
-                {/* T badge — top-right corner */}
-                {cfg && (
-                  <span className="absolute right-1.5 top-1 text-[10px] font-bold leading-none"
-                    style={{ color: active ? cfg.color : cfg.color + "55" }}>
-                    T{cfg.num}
-                  </span>
-                )}
-                <span className="text-sm font-semibold leading-tight"
-                  style={{ color: active ? tileColor : "#64748b" }}>
-                  {tile.label}
+          <Divider />
+
+          {/* Triage level */}
+          <section>
+            <div className="mb-4 flex items-baseline justify-between">
+              <SectionLabel>
+                Triage level <span style={{ color: "#E24B4A" }}>*</span>
+              </SectionLabel>
+              {acuity && (
+                <span className="text-sm font-medium" style={{ color: "#64748b" }}>
+                  {acuityManual ? "Manual override" : "Auto-suggested"}
                 </span>
-              </button>
-            );
-          })}
-        </div>
-        {selectedComplaints.has("Other") && (
-          <textarea rows={2} value={otherDetail}
-            onChange={(e) => setOtherDetail(e.target.value)}
-            placeholder="Other / add detail…"
-            className="mt-2 w-full resize-none rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
-            style={{ background: "#ffffff", border: "1px solid #e2e8f0" }} />
-        )}
-        {errors.complaint && (
-          <p className="mt-1 text-xs" style={{ color: "#E24B4A" }}>{errors.complaint}</p>
-        )}
-      </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {ACUITY_ORDER.map((level) => {
+                const cfg = TRIAGE_CONFIG[level];
+                const selected = acuity === level;
+                return (
+                  <button key={level} type="button" onClick={() => handleAcuitySelect(level)}
+                    className="flex flex-1 flex-col items-center gap-1 rounded-xl py-4 transition-all"
+                    style={{
+                      background: selected ? cfg.color : "transparent",
+                      color: selected ? "#ffffff" : cfg.dimText,
+                      border: `2px solid ${selected ? cfg.color : cfg.color + "50"}`,
+                    }}>
+                    <span className="text-lg font-bold">T{cfg.num}</span>
+                    <span className="text-sm" style={{ opacity: selected ? 1 : 0.85 }}>
+                      {cfg.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {errors.acuity && (
+              <p className="mt-2 text-sm" style={{ color: "#E24B4A" }}>{errors.acuity}</p>
+            )}
+          </section>
 
-      {/* Row 3 — triage level (h-14 buttons) */}
-      <div className="flex-shrink-0">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Triage level <span style={{ color: "#E24B4A" }}>*</span>
-          </p>
-          {acuity && (
-            <span className="text-[10px] text-slate-500">
-              {acuityManual ? "Manually set" : "Auto-suggested · tap to override"}
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {ACUITY_ORDER.map((level) => {
-            const cfg = TRIAGE_CONFIG[level];
-            const selected = acuity === level;
-            return (
-              <button key={level} type="button" onClick={() => handleAcuitySelect(level)}
-                className="flex h-14 flex-col items-center justify-center rounded-lg transition-all"
-                style={{
-                  background: selected ? cfg.color + "25" : cfg.dimBg,
-                  border: `2px solid ${selected ? cfg.color : cfg.color + "35"}`,
-                }}>
-                <p className="text-sm font-bold" style={{ color: selected ? cfg.color : cfg.dimText }}>
-                  T{cfg.num}
-                </p>
-                <p className="text-xs" style={{ color: selected ? cfg.color : cfg.dimText }}>
-                  {cfg.label}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-        {errors.acuity && (
-          <p className="mt-1 text-xs" style={{ color: "#E24B4A" }}>{errors.acuity}</p>
-        )}
-      </div>
+          <Divider />
 
-      {/* Row 4 — symptoms */}
-      <div className="flex-shrink-0">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Symptoms</p>
-        <div className="flex flex-wrap gap-2">
-          {SYMPTOMS.map((s) => {
-            const active = symptoms.has(s);
-            return (
-              <button key={s} type="button" onClick={() => toggleSymptom(s)}
-                className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
+          {/* Symptoms */}
+          <section>
+            <SectionLabel>Symptoms</SectionLabel>
+            <div className="flex flex-wrap gap-3">
+              {SYMPTOMS.map((s) => {
+                const active = symptoms.has(s);
+                return (
+                  <button key={s} type="button" onClick={() => toggleSymptom(s)}
+                    className="rounded-full px-5 py-3 text-lg transition-colors"
+                    style={{
+                      background: active ? activeTriageColor + "15" : "#f1f5f9",
+                      color: active ? activeTriageColor : "#334155",
+                      border: `1.5px solid ${active ? activeTriageColor : "#cbd5e1"}`,
+                      fontWeight: active ? 600 : 500,
+                    }}>
+                    {s}
+                  </button>
+                );
+              })}
+              <button type="button" onClick={() => setOtherSymptomSelected((v) => !v)}
+                className="rounded-full px-5 py-3 text-lg transition-colors"
                 style={{
-                  background: active ? activeTriageColor + "15" : "#f1f5f9",
-                  color: active ? activeTriageColor : "#64748b",
-                  border: `1px solid ${active ? activeTriageColor + "60" : "#e2e8f0"}`,
+                  background: otherSymptomSelected ? activeTriageColor + "15" : "#f1f5f9",
+                  color: otherSymptomSelected ? activeTriageColor : "#334155",
+                  border: `1.5px solid ${otherSymptomSelected ? activeTriageColor : "#cbd5e1"}`,
+                  fontWeight: otherSymptomSelected ? 600 : 500,
                 }}>
-                {s}
+                Other
               </button>
-            );
-          })}
-          <button type="button" onClick={() => setOtherSymptomSelected((v) => !v)}
-            className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
-            style={{
-              background: otherSymptomSelected ? activeTriageColor + "15" : "#f1f5f9",
-              color: otherSymptomSelected ? activeTriageColor : "#64748b",
-              border: `1px solid ${otherSymptomSelected ? activeTriageColor + "60" : "#e2e8f0"}`,
-            }}>
-            Other
+            </div>
+            {otherSymptomSelected && (
+              <input
+                type="text"
+                value={otherSymptom}
+                onChange={(e) => setOtherSymptom(e.target.value)}
+                placeholder="Describe symptom..."
+                className="mt-3 w-full rounded-xl px-4 py-3 text-base outline-none"
+                style={{ background: "#ffffff", border: "1.5px solid #94a3b8", color: "#0f172a" }}
+              />
+            )}
+          </section>
+
+          {/* Spacer + submit at bottom */}
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={submitting}
+            className="mt-6 w-full rounded-xl py-4 text-lg font-bold tracking-wide transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: submitColor, color: "white" }}
+          >
+            {submitting ? "Checking in..." : "Check in patient"}
           </button>
         </div>
-        {otherSymptomSelected && (
-          <input
-            type="text"
-            value={otherSymptom}
-            onChange={(e) => setOtherSymptom(e.target.value)}
-            placeholder="Describe symptom…"
-            className="mt-2 w-full rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
-            style={{ background: "#ffffff", border: "1px solid #e2e8f0" }}
-          />
-        )}
-      </div>
 
-      {/* Row 5 — camera monitoring */}
-      <div className="flex flex-shrink-0 items-center justify-between rounded-lg px-4 py-2.5"
-        style={{ background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div>
-          <p className="text-sm font-medium" style={{ color: "#1e293b" }}>Camera monitoring</p>
-          <p className="text-xs text-slate-500">Patient consents to remote biometric monitoring</p>
-        </div>
-        <button type="button" role="switch" aria-checked={cameraOptIn}
-          onClick={() => setCameraOptIn((v) => !v)}
-          className="relative h-6 w-11 flex-shrink-0 rounded-full transition-colors"
-          style={{ background: cameraOptIn ? "#2563eb" : "#e2e8f0" }}>
-          <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
-            style={{ left: cameraOptIn ? "calc(100% - 1.375rem)" : "2px" }} />
-        </button>
-      </div>
+        {/* ═══════ RIGHT PANEL: Secondary details ═══════ */}
+        <div className="flex flex-[2] flex-col gap-6 overflow-y-auto">
 
-      {/* Row 6 — AI monitoring config (always-visible, grows to fill remaining space) */}
-      <div className="flex min-h-0 flex-1 flex-col rounded-lg p-4"
-        style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            AI monitoring config
-          </p>
-          <span className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-            style={{
-              background: acuity ? TRIAGE_CONFIG[acuity].color + "18" : "#f1f5f9",
-              color: acuity ? TRIAGE_CONFIG[acuity].color : "#64748b",
-              border: `1px solid ${acuity ? TRIAGE_CONFIG[acuity].color + "40" : "#e2e8f0"}`,
-            }}>
-            {cvInstructions.alert_sensitivity} sensitivity
-          </span>
-        </div>
-
-        {selectedComplaints.size === 0 ? (
-          <p className="text-sm text-slate-600">Select a complaint to configure AI monitoring</p>
-        ) : (
-          <div className="flex gap-8 overflow-hidden">
-            {/* Left: tracking + ignore */}
-            <div className="flex-1 min-w-0">
-              <p className="mb-2 text-xs font-medium text-slate-500">Tracking closely</p>
-              {cvInstructions.track_priority.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {cvInstructions.track_priority.map((s) => (
-                    <span key={s} className="rounded px-2 py-0.5 text-xs"
-                      style={{ background: "#3b82f618", color: "#3b82f6", border: "1px solid #3b82f625" }}>
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-600">No specific signals for this complaint</p>
-              )}
-              {cvInstructions.ignore_flags.length > 0 && (
-                <div className="mt-3">
-                  <p className="mb-1.5 text-xs font-medium text-slate-500">Ignoring</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {cvInstructions.ignore_flags.map((s) => (
-                      <span key={s} className="rounded px-2 py-0.5 text-xs"
-                        style={{ background: "#64748b18", color: "#64748b", border: "1px solid #64748b25" }}>
+          {/* Patient info card */}
+          <div className="rounded-2xl p-6" style={{ background: "#ffffff", border: "1px solid #cbd5e1" }}>
+            <SectionLabel>Patient information</SectionLabel>
+            <div className="flex flex-col gap-3">
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Patient name (optional)"
+                className="rounded-xl px-4 py-3 text-base outline-none"
+                style={{ background: "#ffffff", border: "1.5px solid #94a3b8", color: "#0f172a" }} />
+              <div className="flex gap-3">
+                <input type="number" value={age} onChange={(e) => setAge(e.target.value)}
+                  placeholder="Age" min={0} max={120}
+                  className="w-24 rounded-xl px-4 py-3 text-base outline-none"
+                  style={{ background: "#ffffff", border: "1.5px solid #94a3b8", color: "#0f172a" }} />
+                <div className="flex flex-1 gap-2">
+                  {(["M", "F", "NB"] as const).map((s) => {
+                    const full = s === "M" ? "Male" : s === "F" ? "Female" : "Non-binary";
+                    const on = sex === full;
+                    return (
+                      <button key={s} type="button" onClick={() => setSex(on ? "" : full)}
+                        className="flex-1 rounded-xl py-3 text-sm font-semibold transition-colors"
+                        style={{
+                          background: on ? "#2563eb" : "#ffffff",
+                          color: on ? "#ffffff" : "#334155",
+                          border: `1.5px solid ${on ? "#2563eb" : "#94a3b8"}`,
+                        }}>
                         {s}
-                      </span>
-                    ))}
-                  </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+              <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)}
+                className="rounded-xl px-4 py-3 text-base outline-none"
+                style={{ background: "#ffffff", border: "1.5px solid #94a3b8", color: "#0f172a", colorScheme: "light" }} />
             </div>
-
-            {/* Right: sensitivity + universal flags */}
-            <div className="w-44 flex-shrink-0">
-              <p className="mb-2 text-xs font-medium text-slate-500">Alert sensitivity</p>
-              <p className="mb-4 text-sm font-semibold capitalize"
-                style={{ color: acuity ? TRIAGE_CONFIG[acuity].color : "#64748b" }}>
-                {cvInstructions.alert_sensitivity}
-              </p>
-              <p className="mb-1.5 text-xs font-medium text-slate-500">Always monitoring</p>
-              <div className="flex flex-col gap-1">
-                {UNIVERSAL_FLAGS.map((f) => (
-                  <span key={f} className="text-xs" style={{ color: "#475569" }}>
-                    · {f.replace(/_/g, " ")}
+            {recentCheckins.length > 0 && (
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-sm font-medium" style={{ color: "#475569" }}>Recent:</span>
+                {recentCheckins.slice(0, 3).map((c, i) => (
+                  <span key={i} className="rounded-lg px-2.5 py-1 font-mono text-sm"
+                    style={{ background: "#f0fdf4", color: "#15803d" }}
+                    title={`${c.name} — ${c.complaint}`}>
+                    {c.patient_id}
                   </span>
                 ))}
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Row 7 — submit */}
-      <button
-        type="button"
-        onClick={() => void handleSubmit()}
-        disabled={submitting}
-        className="flex-shrink-0 w-full rounded-lg py-3 text-base font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{ background: submitColor, color: "white" }}
-      >
-        {submitting ? "Checking in…" : "Check in patient →"}
-      </button>
+          {/* Camera monitoring card */}
+          <div className="flex items-center justify-between rounded-2xl p-6"
+            style={{ background: "#ffffff", border: "1px solid #cbd5e1" }}>
+            <div>
+              <p className="text-base font-semibold" style={{ color: "#0f172a" }}>Camera monitoring</p>
+              <p className="text-sm" style={{ color: "#475569" }}>Patient consents to remote biometric monitoring</p>
+            </div>
+            <button type="button" role="switch" aria-checked={cameraOptIn}
+              onClick={() => setCameraOptIn((v) => !v)}
+              className="relative h-8 w-14 flex-shrink-0 rounded-full transition-colors"
+              style={{ background: cameraOptIn ? "#2563eb" : "#94a3b8" }}>
+              <span className="absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all"
+                style={{ left: cameraOptIn ? "calc(100% - 1.75rem)" : "4px" }} />
+            </button>
+          </div>
+
+          {/* AI monitoring config (collapsible) */}
+          <div className="rounded-2xl" style={{ background: "#ffffff", border: "1px solid #cbd5e1" }}>
+            <button type="button" onClick={() => setShowAiConfig((v) => !v)}
+              className="flex w-full items-center justify-between px-6 py-5 text-left">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "#1e293b" }}>
+                  AI monitoring
+                </h2>
+                {acuity && (
+                  <span className="rounded-full px-3 py-1 text-sm font-medium"
+                    style={{
+                      background: TRIAGE_CONFIG[acuity].color + "12",
+                      color: TRIAGE_CONFIG[acuity].color,
+                    }}>
+                    {cvInstructions.alert_sensitivity}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm" style={{ color: "#64748b", transform: showAiConfig ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                &#9660;
+              </span>
+            </button>
+
+            {showAiConfig && (
+              <div className="px-6 pb-6" style={{ borderTop: "1.5px solid #cbd5e1" }}>
+                {selectedComplaints.size === 0 ? (
+                  <p className="pt-4 text-base" style={{ color: "#64748b" }}>Select a complaint to configure</p>
+                ) : (
+                  <div className="flex gap-8 pt-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="mb-3 text-sm font-semibold" style={{ color: "#334155" }}>Tracking</p>
+                      {cvInstructions.track_priority.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {cvInstructions.track_priority.map((s) => (
+                            <span key={s} className="rounded-lg px-3 py-1 text-sm"
+                              style={{ background: "#3b82f610", color: "#3b82f6" }}>
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm" style={{ color: "#64748b" }}>No specific signals</p>
+                      )}
+                      {cvInstructions.ignore_flags.length > 0 && (
+                        <div className="mt-4">
+                          <p className="mb-2 text-sm font-semibold" style={{ color: "#334155" }}>Ignoring</p>
+                          <div className="flex flex-wrap gap-2">
+                            {cvInstructions.ignore_flags.map((s) => (
+                              <span key={s} className="rounded-lg px-3 py-1 text-sm"
+                                style={{ background: "#64748b15", color: "#475569" }}>
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-44 flex-shrink-0">
+                      <p className="mb-2 text-sm font-semibold" style={{ color: "#334155" }}>Sensitivity</p>
+                      <p className="mb-5 text-lg font-semibold capitalize"
+                        style={{ color: acuity ? TRIAGE_CONFIG[acuity].color : "#64748b" }}>
+                        {cvInstructions.alert_sensitivity}
+                      </p>
+                      <p className="mb-2 text-sm font-semibold" style={{ color: "#334155" }}>Always on</p>
+                      <div className="flex flex-col gap-1">
+                        {UNIVERSAL_FLAGS.map((f) => (
+                          <span key={f} className="text-sm" style={{ color: "#475569" }}>
+                            {f.replace(/_/g, " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -79,23 +79,28 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
       }}
     >
       {/* ── Compact rows (always visible) ── */}
-      <div className="px-3 py-2.5">
+      <div className="px-4 py-3">
         {/* Row 1: name + priority */}
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <span className="text-sm font-bold leading-snug" style={{ color: "var(--text)" }}>
-            {patient.display_name}
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold leading-snug" style={{ color: "var(--text)" }}>
+              {patient.display_name}
+            </span>
+            <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+              {patient.patient_id}
+            </span>
+          </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {alertCount > 0 && (
               <span
-                className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
                 style={{ background: "#E24B4A" }}
               >
                 {alertCount}
               </span>
             )}
             <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
               style={{ background: meta.statusColor + "20", color: meta.statusColor }}
             >
               {meta.statusLabel}
@@ -104,25 +109,25 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
         </div>
 
         {/* Row 2: triage badge + BPM + wait + chevron */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span
-            className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+            className="rounded-full px-2 py-0.5 text-xs font-bold"
             style={{ background: meta.triageColor + "25", color: meta.triageColor }}
           >
             T{meta.triageNum}
           </span>
           <span
             className="tabular-nums font-black"
-            style={{ fontSize: "1rem", color: hrDisplay.muted ? "var(--text-dim)" : "var(--amber)" }}
+            style={{ fontSize: "1.1rem", color: hrDisplay.muted ? "var(--text-dim)" : "var(--amber)" }}
           >
             {hrDisplay.value}
-            <span className="text-[10px] font-medium ml-0.5" style={{ color: "var(--text-muted)" }}>bpm</span>
+            <span className="text-xs font-medium ml-0.5" style={{ color: "var(--text-muted)" }}>bpm</span>
           </span>
-          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>·</span>
-          <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>·</span>
+          <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
             ⏱ {formatElapsed(patient.wait_minutes, extraSeconds)}
           </span>
-          <span className="ml-auto text-[10px]" style={{ color: "var(--text-dim)" }}>
+          <span className="ml-auto text-xs" style={{ color: "var(--text-dim)" }}>
             {isExpanded ? "▲" : "▼"}
           </span>
         </div>
@@ -131,12 +136,12 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
       {/* ── Expanded detail section ── */}
       {isExpanded && (
         <div
-          className="px-3 pb-3"
+          className="px-4 pb-4"
           onClick={(e) => e.stopPropagation()}
           style={{ borderTop: "1px solid #e2e8f0" }}
         >
           {/* Chief complaint */}
-          <p className="mt-2 text-xs" style={{ color: "var(--text-2)" }}>{patient.chief_complaint}</p>
+          <p className="mt-2.5 text-sm" style={{ color: "var(--text-2)" }}>{patient.chief_complaint}</p>
 
           {/* HR + sparkline */}
           <div className="mt-2 flex items-center gap-3">
@@ -189,7 +194,7 @@ export function PatientCard({ patient, isSelected, onSelect, hrData, alertCount 
           <button
             type="button"
             onClick={() => onSelect(patient)}
-            className="mt-3 w-full rounded-xl py-1.5 text-xs font-bold transition-all"
+            className="mt-3 w-full rounded-xl py-2 text-sm font-bold transition-all"
             style={{
               background: "rgba(37,99,235,0.08)",
               color: "var(--accent)",

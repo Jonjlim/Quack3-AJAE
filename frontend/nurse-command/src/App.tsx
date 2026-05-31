@@ -222,7 +222,7 @@ export default function App() {
         )}
 
         <aside
-          className={`flex w-72 flex-shrink-0 flex-col ${hasCritical ? "alert-critical-panel" : ""}`}
+          className={`flex w-96 flex-shrink-0 flex-col ${hasCritical ? "alert-critical-panel" : ""}`}
           style={{
             background: hasCritical ? "#fef2f2" : "#ffffff",
             border: hasCritical
@@ -235,18 +235,18 @@ export default function App() {
           }}
         >
           <header
-            className="flex items-center justify-between px-4 py-4"
+            className="flex items-center justify-between px-5 py-5"
             style={{ borderBottom: `1px solid ${hasCritical ? "rgba(220,38,38,0.15)" : "#e2e8f0"}` }}
           >
             <h2
-              className="text-base font-black tracking-tight"
+              className="text-xl font-black tracking-tight"
               style={{ color: hasCritical ? "#dc2626" : "var(--text)" }}
             >
               {hasCritical ? "🚨 ALERT" : "Alerts"}
             </h2>
             {unackedAlerts.length > 0 && (
               <span
-                className={`rounded-full px-2.5 py-1 text-xs font-black text-white ${hasCritical ? "alert-badge-pulse" : ""}`}
+                className={`rounded-full px-3 py-1.5 text-sm font-black text-white ${hasCritical ? "alert-badge-pulse" : ""}`}
                 style={{ background: "#dc2626", boxShadow: hasCritical ? "0 0 12px rgba(220,38,38,0.70)" : "none" }}
               >
                 {unackedAlerts.length}
@@ -254,9 +254,9 @@ export default function App() {
             )}
           </header>
 
-          <div className="flex-1 space-y-2 overflow-y-auto p-3">
+          <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {unackedAlerts.length === 0 ? (
-              <p className="py-8 text-center text-xs" style={{ color: "var(--text-dim)" }}>No active alerts</p>
+              <p className="py-8 text-center text-sm" style={{ color: "var(--text-dim)" }}>No active alerts</p>
             ) : (
               unackedAlerts.map((alert) => {
                 const patientName = alert.patient_id
@@ -266,31 +266,31 @@ export default function App() {
                 return (
                   <div
                     key={alert.alert_id}
-                    className="rounded-2xl border p-4"
+                    className="rounded-2xl border p-5"
                     style={{
                       background: "#ffffff",
                       borderColor: "#e2e8f0",
                       boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                     }}
                   >
-                    <div className="mb-1.5 flex items-start justify-between gap-2">
-                      <p className="text-sm font-black uppercase tracking-wide" style={{ color: "#dc2626" }}>
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <p className="text-base font-black uppercase tracking-wide" style={{ color: "#dc2626" }}>
                         {alert.type.replace(/_/g, " ")}
                       </p>
                       {patientName && (
-                        <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(248,113,113,0.20)", color: "#fca5a5" }}>
+                        <span className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(248,113,113,0.20)", color: "#fca5a5" }}>
                           {patientName}
                         </span>
                       )}
                     </div>
-                    <p className="mb-1 text-xs font-medium" style={{ color: "var(--text-2)" }}>{alert.message}</p>
-                    <p className="mb-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    <p className="mb-1.5 text-sm font-medium" style={{ color: "var(--text-2)" }}>{alert.message}</p>
+                    <p className="mb-4 text-xs" style={{ color: "var(--text-muted)" }}>
                       {new Date(alert.created_at).toLocaleTimeString("en-GB")}
                     </p>
                     <button
                       type="button"
                       onClick={() => acknowledgeAlert(alert.alert_id)}
-                      className="w-full rounded-xl py-2 text-sm font-bold transition-opacity hover:opacity-80"
+                      className="w-full rounded-xl py-3 text-base font-bold transition-opacity hover:opacity-80"
                       style={{
                         background: "rgba(220,38,38,0.85)",
                         color: "#ffffff",
