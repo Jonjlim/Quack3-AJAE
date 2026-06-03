@@ -1,6 +1,6 @@
 # ER-OVERWATCH
 
-> **Zero-install, real-time emergency room telemetry and triage optimization — built in 36 hours.**
+> **Zero-install, real-time emergency room telemetry and triage optimization — built in 24 hours.**
 
 ER-OVERWATCH bridges the critical data gap between an overcrowded waiting room and overwhelmed medical staff. Patients get transparent, privacy-safe queue visibility. Nurses get a live command dashboard with AI-assisted triage, remote vitals monitoring, and automatic fall detection — all without wiring a single new device.
 
