@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://www.youtube.com/watch?v=7biBbQWCngY">Demo video</a> ·
   <a href="#run-locally">Run locally</a> ·
   <a href="docs/DEMO.md">Demo script</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
