@@ -3,10 +3,12 @@
 <p align="center"><b>Turn an ER waiting room's ordinary webcams and patients' phones into fall detectors, contactless heart-rate monitors, and an AI intake assistant, all feeding one live triage dashboard for nurses.</b></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Winner-1st%20Place%20Overall%20%C2%B7%20QuackHacks%202026%20(71%20projects)-gold?style=for-the-badge" alt="1st Place Overall, QuackHacks 2026, out of 71 projects">
+  <a href="https://2026.quackhacks.org/projects/winners/er-overwatch"><img src="https://img.shields.io/badge/Winner-1st%20Place%20Overall%20%C2%B7%20QuackHacks%202026%20(71%20projects)-gold?style=for-the-badge" alt="1st Place Overall, QuackHacks 2026, out of 71 projects"></a>
 </p>
 
 <p align="center">
+  <a href="https://2026.quackhacks.org/projects/winners/er-overwatch">QuackHacks project page</a> ·
+  <a href="https://www.youtube.com/watch?v=7biBbQWCngY">Demo video</a> ·
   <a href="#run-locally">Run locally</a> ·
   <a href="docs/DEMO.md">Demo script</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
@@ -24,7 +26,7 @@
   <img src="https://img.shields.io/badge/LiveKit-1F1F1F?logo=webrtc&logoColor=white" alt="LiveKit">
 </p>
 
-**1st Place Overall at QuackHacks 2026 (QuackHacks 3, University of Oregon), out of 71 projects.**
+**1st Place Overall at QuackHacks 2026 ([QuackHacks 3](https://2026.quackhacks.org/projects/winners/er-overwatch), University of Oregon), out of 71 projects.**
 
 ## Why it's cool
 
