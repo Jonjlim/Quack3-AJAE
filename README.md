@@ -1,325 +1,167 @@
-# ER-OVERWATCH
+<h1 align="center">ER-OVERWATCH</h1>
 
-> **Zero-install, real-time emergency room telemetry and triage optimization — built in 24 hours.**
+<p align="center"><b>Turn an ER waiting room's ordinary webcams and patients' phones into fall detectors, contactless heart-rate monitors, and an AI intake assistant, all feeding one live triage dashboard for nurses.</b></p>
 
-ER-OVERWATCH bridges the critical data gap between an overcrowded waiting room and overwhelmed medical staff. Patients get transparent, privacy-safe queue visibility. Nurses get a live command dashboard with AI-assisted triage, remote vitals monitoring, and automatic fall detection — all without wiring a single new device.
+<p align="center">
+  <img src="https://img.shields.io/badge/Winner-1st%20Place%20Overall%20%C2%B7%20QuackHacks%202026%20(71%20projects)-gold?style=for-the-badge" alt="1st Place Overall, QuackHacks 2026, out of 71 projects">
+</p>
 
----
+<p align="center">
+  <a href="#run-locally">Run locally</a> ·
+  <a href="docs/DEMO.md">Demo script</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="docs/API_endpoints.md">API</a>
+</p>
 
-## The Problem
+<p align="center">
+  <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Python_3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
+  <img src="https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB" alt="React 19">
+  <img src="https://img.shields.io/badge/Next.js_14-000000?logo=nextdotjs&logoColor=white" alt="Next.js 14">
+  <img src="https://img.shields.io/badge/MediaPipe-0097A7?logo=google&logoColor=white" alt="MediaPipe">
+  <img src="https://img.shields.io/badge/OpenCV-5C3EE8?logo=opencv&logoColor=white" alt="OpenCV">
+  <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?logo=googlegemini&logoColor=white" alt="Google Gemini">
+  <img src="https://img.shields.io/badge/LiveKit-1F1F1F?logo=webrtc&logoColor=white" alt="LiveKit">
+</p>
 
-Emergency rooms are drowning. The average US ER wait time exceeds 2.5 hours, and nurses spend enormous cognitive bandwidth on manual triage updates, room monitoring, and patient status tracking — time stolen from actual care. Patients sit in the dark: no information, rising anxiety, and no way to signal deteriorating symptoms.
+**1st Place Overall at QuackHacks 2026 (QuackHacks 3, University of Oregon), out of 71 projects.**
 
-**The gap:** There is no lightweight, real-time bridge between the patient waiting area and the triage team that works on commodity hardware without proprietary sensors.
+## Why it's cool
 
----
+Emergency-room patients can wait for hours while nurses track triage, vitals, and room safety by hand. ER-OVERWATCH covers all of it with hardware a hospital already has. MediaPipe pose tracking on the nurses' camera feeds draws a box around each person and flags collapses. A room camera can also send short frame sequences to Gemini to catch slower slumps. Patients scan a QR code to join the queue on their own phone. With their consent, the phone records 8-second face clips, and the backend turns them into a heart-rate estimate using the CHROM rPPG method. While patients wait, a Gemini intake assistant builds a case file the doctor can download as a PDF. Every alert reaches the nurse dashboard over WebSockets in real time.
 
-## Our Solution
+## Highlights
 
-ER-OVERWATCH turns any smartphone and a room webcam into a clinical monitoring system:
+- **1st place overall out of 71 projects** at QuackHacks 2026.
+- **Three services, one platform:** a FastAPI triage engine with 24 REST/WebSocket routes, a React 19 nurse dashboard, and a Next.js 14 patient PWA.
+- **In-browser pose tracking** of up to 4 people per camera feed (MediaPipe Pose Landmarker, GPU with CPU fallback).
+- **Gemini fall analysis** of a 9-second multi-frame window. The room camera captures a snapshot every 1 s, or a 5 s clip sent every 2 s.
+- **Contactless heart rate** from 8-second phone clips: CHROM chrominance, a Butterworth band-pass filter, and autocorrelation + FFT fusion, gated by motion and confidence.
+- **Human in the loop:** Gemini drafts advisory intake notes, but a nurse always sets the acuity.
+- **Runs without keys:** mock mode with seeded data in both frontends, plus a demo fall-alert endpoint.
 
-- **Patients** sign in on a PWA, join a transparent queue showing *Anonymized Acuity Load* (aggregate trauma burden — not other patients' names), and optionally opt into passive heart-rate monitoring via their front-facing camera.
-- **Nurses** get a live command dashboard: patient grid, real-time biometrics, AI-assisted intake notes, fall alerts, and a LiveKit video feed — all in a browser tab.
-- **AI triage:** Gemini generates clinical observation notes from chief complaint text, helping nurses prioritize faster.
-- **Fall detection:** Runs entirely in the browser on the room's wide-angle camera stream, with no video upload. Falls trigger instant CRITICAL alerts on the nurse dashboard.
-- **HIPAA pivot:** Patients only see aggregate acuity load — never individual wait times or other patients' identities.
+## What it does
 
----
+- **Nurse check-in and triage dashboard.** A nurse checks a patient in with a name and chief complaint. Gemini drafts an advisory clinical observation note, but the nurse always sets the acuity. Patients join the queue on their phone by QR code. The dashboard shows a live patient grid, biometrics, and alerts over WebSockets.
+- **Patient queue PWA.** Patients see their own queue position and an aggregate "acuity load" for the department. They never see other patients' names or wait times. They can request help from the waiting room.
+- **Contactless heart rate (rPPG).** If the patient opts in, their phone camera records about 8-second face clips. The backend estimates heart rate using the CHROM method with OpenCV and MediaPipe Face Mesh, and returns a confidence score. Abnormal readings raise an alert on the nurse grid.
+- **Fall detection, two ways:**
+  - **Room camera (`/camera`):** a room device streams to LiveKit and sends periodic frames or short clips to the backend. Gemini analyzes the frames across a 9-second window to catch collapses and slow slumps.
+  - **Dashboard feeds:** lightweight in-browser motion and pose heuristics run on the nurse dashboard's video feeds.
 
-## Feature Highlights
+  A confirmed fall sends a CRITICAL alert to every nurse client.
+- **AI case-file assistant.** While waiting, patients can talk to a Gemini intake assistant by voice or text. It asks follow-up questions about how the problem started, symptoms, and history. Nurses can then generate a structured case-file report or PDF for the doctor.
+- **Demo-friendly.** Both frontends have a mock mode with seeded data, and `POST /api/v1/demo/trigger-fall` fires a sample fall alert.
 
-| Feature | Description |
-|---------|-------------|
-| Real-time queue | Live WebSocket-driven patient queue with acuity-weighted ordering |
-| rPPG vitals | Server-side heart rate from 8s face clips — no wearables required |
-| Browser fall detection | Motion heuristics on MediaStream — zero video upload, zero latency |
-| AI intake assistant | Gemini generates clinical observation notes from chief complaint |
-| Acuity Load indicator | Anonymous aggregate trauma score shown to patients |
-| LiveKit video | WebRTC room feed in the nurse dashboard, per-patient modal |
-| Firebase Auth | Google (nurses) + Anonymous (patients) — optional, zero-config default |
-| Mock mode | Full UI demo without any running backend |
-| Demo trigger | `POST /api/v1/demo/trigger-fall` fires a canned alert for judging fallback |
+## Engineering highlights
 
----
+| Area | What we built | Where |
+|---|---|---|
+| **Real-time alerting** | A WebSocket connection manager pushes patient, vitals, and CRITICAL fall events to every nurse client. The queue is ordered by acuity, escalation, and wait time. | `backend/triage-engine/app/ws/`, `services/events.py`, `services/triage.py` |
+| **In-browser fall detection** | MediaPipe Pose Landmarker (full model) tracks multiple people and draws bounding boxes on the nurse feeds. A temporal classifier then flags falls and collapses. Only a small JSON alert leaves the browser. | `frontend/nurse-command/src/lib/nurseFeedDetector.ts`, `browserFallDetector.ts`, `poseDistressClassifier.ts` |
+| **Multi-frame AI fall analysis** | Room-camera snapshots go into a ring buffer for each room. Gemini judges the whole 9-second sequence instead of a single frame, so slow slumps are caught as well as sudden falls. | `frontend/nurse-command/src/hooks/useFallDetection.ts`, `app/services/snapshot_store.py`, `backend/scene-intel/fall_detection/detector.py` |
+| **rPPG pipeline** | OpenCV + MediaPipe Face Mesh pick a forehead region. The CHROM signal goes through a Butterworth band-pass and FFT/autocorrelation fusion, and readings are rejected when there's motion or low confidence. | `backend/rppg/rppg.py`, `app/services/rppg_bridge.py`, `frontend/patient-client/lib/useRppgSampler.ts` |
+| **AI case file** | A voice/text Gemini intake chat produces a structured report and a ReportLab PDF. | `app/routers/casefile.py`, `app/services/casefile.py` |
+| **Video infrastructure** | A LiveKit token service and WebRTC room video connect patient and room devices to the dashboard. | `app/routers/livekit_tokens.py` |
+| **Shared contracts** | Telemetry schemas are mirrored in Python and TypeScript. | `shared/schemas/telemetry.py`, `shared/types/telemetry.ts` |
 
 ## Architecture
 
 ```text
-┌─────────────────────┐     REST / WebSocket   ┌──────────────────────┐
-│  patient-client     │◄──────────────────────►│  triage-engine       │
-│  (Next.js 14 PWA)   │                         │  (FastAPI :8000)     │
-│                     │                         │                      │
-│  · queue + sign-in  │   POST /api/v1/rppg     │  · patient state     │
-│  · rPPG clip upload │────────────────────────►│  · acuity engine     │
-│  · acuity load view │                         │  · alert routing     │
-└─────────────────────┘                         └──────────▲───────────┘
-                                                            │ WebSocket
-┌─────────────────────┐     REST / WebSocket               │
-│  nurse-command      │◄───────────────────────────────────┘
-│  (React 19 + Vite)  │
-│                     │   POST /alerts/fall-report
-│  · triage grid      │────────────────────────► (JSON only, no video)
-│  · fall detection   │
-│    (in browser)     │
-│  · LiveKit feeds    │◄──────────────────────► LiveKit Cloud (WebRTC)
-└─────────────────────┘
-             │
-             ▼
-    backend/rppg (OpenCV + MediaPipe)
-    CHROM chrominance + FFT → heart rate BPM + confidence
+ patient-client (Next.js 14 PWA, :3000)          nurse-command (React 19 + Vite, :5173)
+ ├─ sign-in, queue, help request                 ├─ check-in, patient grid, alerts, case-file reports
+ ├─ rPPG clip upload ───────────┐                ├─ /camera room device → LiveKit + Gemini fall analysis
+ └─ case-file chat ─────────┐   │                └─ in-browser motion/pose fall heuristics
+                            ▼   ▼                          │ REST + WebSocket
+                  triage-engine (FastAPI, :8000) ◄─────────┘
+                  ├─ queue / acuity engine, alert routing, SQLite persistence
+                  ├─ rPPG bridge → backend/rppg (OpenCV + MediaPipe, CHROM + FFT)
+                  ├─ Gemini: intake notes, case-file chat/report, multi-frame fall analysis (backend/scene-intel)
+                  └─ LiveKit token service  ──►  LiveKit Cloud (WebRTC room video)
 ```
 
-### Video Processing Split
-
-| Concern | Where it runs | Latency |
-|---------|---------------|---------|
-| Fall detection | Browser (nurse-command, MediaStream) | < 250 ms |
-| rPPG heart rate | Server (OpenCV + MediaPipe Face Mesh) | ~1–2 s per clip |
-| Room / patient video | LiveKit WebRTC | sub-second |
-
----
-
-## Tech Stack
-
-### Frontend
-| | |
-|-|-|
-| **patient-client** | Next.js 14, React 18, Tailwind CSS v4, LiveKit React SDK |
-| **nurse-command** | React 19, Vite, Tailwind CSS v4, LiveKit React SDK |
-
-### Backend
-| | |
-|-|-|
-| **triage-engine** | FastAPI, Python 3.11, Pydantic v2, WebSockets, uvicorn |
-| **rppg** | OpenCV, MediaPipe Face Mesh, NumPy, scipy (Butterworth filter + FFT) |
-
-### AI & Services
-| | |
-|-|-|
-| **Gemini** | AI intake clinical notes + triage reasoning |
-| **LiveKit Cloud** | WebRTC room management, SFU, token auth |
-| **Firebase** | Google Auth (nurses) + Anonymous sign-in (patients) |
-
-### Algorithm: CHROM rPPG
-The rPPG pipeline uses the **CHROM chrominance method** on the forehead ROI (10 MediaPipe Face Mesh landmarks), fused with autocorrelation and FFT peak detection. A Butterworth bandpass filter (0.7–4 Hz, 42–240 BPM) is applied before frequency analysis. Each reading includes a 95% confidence interval; readings below threshold confidence are flagged as unreliable and suppressed from the nurse grid.
-
----
-
-## Project Structure
-
-```text
-Quack3-AJAE/
-├── frontend/
-│   ├── patient-client/    # Patient PWA — sign-in, queue, camera + rPPG clip upload
-│   └── nurse-command/     # Nurse dashboard — check-in, fall detection, LiveKit feed
-├── backend/
-│   ├── triage-engine/     # FastAPI REST + WebSockets + LiveKit token service
-│   └── rppg/              # Server-side heart rate from face video (OpenCV / MediaPipe)
-├── shared/                # Pydantic schemas (Python) + TypeScript mirrors
-└── docs/
-    ├── ARCHITECTURE.md
-    ├── API_endpoints.md
-    ├── DEMO.md
-    └── FIREBASE_AUTH.md
-```
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- [LiveKit Cloud](https://cloud.livekit.io) project (free tier works)
-- Gemini API key ([Google AI Studio](https://aistudio.google.com))
-
-### 1. Environment Setup
-
-```bash
-git clone <repo>
-cd Quack3-AJAE
-cp .env.example .env
-```
-
-Edit `.env` and fill in:
-
-```env
-LIVEKIT_API_KEY=...          # from cloud.livekit.io project settings
-LIVEKIT_API_SECRET=...
-LIVEKIT_URL=wss://your-project.livekit.cloud
-
-GEMINI_API_KEY=...           # from aistudio.google.com
-
-# Firebase is optional — leave REQUIRE_FIREBASE_AUTH=false to skip
-REQUIRE_FIREBASE_AUTH=false
-```
-
-### 2. Triage Engine (Backend)
-
-```bash
-cd backend/triage-engine
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-./run.sh
-# → http://localhost:8000
-# → Swagger UI: http://localhost:8000/docs
-```
-
-### 3. Patient PWA
-
-```bash
-cd frontend/patient-client
-npm install
-npm run dev
-# → https://localhost:3000
-```
-
-Sign in with a **patient ID** generated during nurse check-in.
-
-### 4. Nurse Command Dashboard
-
-```bash
-cd frontend/nurse-command
-npm install
-npm run dev
-# → http://localhost:5173
-```
-
-- Main dashboard: `http://localhost:5173`
-- Room camera + fall detection: `http://localhost:5173/camera`
-
-### 5. (Optional) rPPG Unit Tests
-
-```bash
-cd backend/rppg
-pip install -r requirements.txt
-pytest test_rppg.py -v
-```
-
-### One-command start (Windows)
-
-```bat
-start-all.bat
-```
-
----
-
-## Key Flows
-
-### Patient Check-In & Queue
-1. Nurse opens `http://localhost:5173`, enters patient name + chief complaint.
-2. Triage engine calls Gemini to generate a clinical observation note.
-3. Patient receives a unique `patient_id` and joins the queue on their phone at `https://localhost:3000`.
-4. Queue positions are recomputed live using acuity-weighted ordering; all connected clients receive a WebSocket push.
-
-### Remote Vitals (rPPG)
-1. Patient opts into camera on their queue page.
-2. `useRppgSampler` captures ~8-second clips and POSTs them (base64) to `POST /api/v1/rppg`.
-3. `backend/rppg` runs CHROM + FFT on the forehead ROI and returns `{ bpm, confidence, ci_lower, ci_upper }`.
-4. Triage engine updates `PatientRecord.last_biometric`; if BPM is critical, a `BIOMETRIC_DROP` alert fires and appears instantly on the nurse grid.
-
-### Fall Detection (Browser)
-1. A room device opens `/camera` and publishes its stream to LiveKit.
-2. `browserFallDetector.ts` samples frames ~4 Hz from the `MediaStream`.
-3. Motion heuristics detect a rapid drop event in the lower frame band.
-4. On confidence ≥ 0.6 with `medium`/`high` danger, a `POST /api/v1/alerts/fall-report` fires (JSON only — no video uploaded).
-5. Triage engine emits `CRITICAL_FALL` on `ws://.../ws/nurse`; the nurse grid flashes within milliseconds.
-
-### AI Intake Notes
-- Chief complaint text → Gemini → structured clinical observation note.
-- Gemini is **advisory only**: acuity is always set by the human nurse, never overridden by AI.
-
----
-
-## API Reference (Selected Endpoints)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/v1/intake` | Check in a new patient (nurse-only) |
-| `GET` | `/api/v1/patients` | List all patients with queue positions |
-| `POST` | `/api/v1/rppg` | Submit face video clip for heart rate analysis |
-| `POST` | `/api/v1/alerts/fall-report` | Report a browser-detected fall event |
-| `GET` | `/api/v1/queue/{patient_id}` | Get queue status for a single patient |
-| `WS` | `/ws/nurse` | Nurse WebSocket — patient snapshots + alerts |
-| `WS` | `/ws/patient/{patient_id}` | Patient WebSocket — personal queue updates |
-| `POST` | `/api/v1/livekit/token` | Issue a LiveKit room token |
-| `POST` | `/api/v1/demo/trigger-fall` | Fire a canned fall alert (demo fallback) |
-
-Full contract: [`docs/API_endpoints.md`](docs/API_endpoints.md)
-
----
-
-## Mock / Demo Mode
-
-No backend? No problem.
-
-```env
-# patient-client
-NEXT_PUBLIC_USE_MOCK=true
-
-# nurse-command
-VITE_USE_MOCK=true
-```
-
-Both frontends run fully with seeded mock data. For a live fall alert without camera hardware:
-
-```bash
-curl -X POST http://localhost:8000/api/v1/demo/trigger-fall
-```
-
-Full demo script: [`docs/DEMO.md`](docs/DEMO.md)
-
----
-
-## Firebase Auth (Optional)
-
-By default, the stack runs without any authentication. To enable:
-
-1. Create a Firebase project, enable **Google** and **Anonymous** sign-in providers.
-2. Download a service account JSON → place it at `./firebase-service-account.json`.
-3. Set `REQUIRE_FIREBASE_AUTH=true` in `.env` along with the Firebase project variables.
-
-See [`docs/FIREBASE_AUTH.md`](docs/FIREBASE_AUTH.md) for step-by-step setup.
-
----
-
-## Privacy & HIPAA Considerations
-
-- **Patients never see other patients.** The queue page shows only an aggregate *Acuity Load* score — no names, IDs, or individual wait times of other patients.
-- **Fall detection sends no video.** Only a small JSON payload (confidence score, severity) is transmitted to the backend. Raw video stays in the browser.
-- **rPPG clips are ephemeral.** Video clips are written to a temp file, analyzed, and immediately deleted — never persisted.
-- **Firebase Anonymous sign-in** ensures patient sessions are not linked to any personal identity unless the patient explicitly signs in.
-
----
-
-## What We Learned
-
-- **rPPG on mobile is hard.** Lighting variation and user movement cause enormous noise. We implemented EMA smoothing, a multi-sample HR buffer, confidence gating, and CHROM fusion to make readings production-viable.
-- **Browser fall detection is surprisingly effective.** Pure motion heuristics on a room stream with no ML model runs at 60 fps with negligible CPU on any 2020+ laptop — and fires alerts in under 250 ms.
-- **WebSockets beat polling for ER triage.** The nurse dashboard needs instant visibility; a 1-second polling loop creates perceptible lag that erodes trust. Full-duplex WS removes that entirely.
-- **Gemini is advisory, not authoritative.** We deliberately wired Gemini to provide *analysis notes*, not acuity decisions — a nurse always owns the final call.
-
----
-
-## Roadmap / Future Work
-
-- [ ] Persistent database (PostgreSQL + Redis) to survive server restarts
-- [ ] Escalation workflow: nurse acknowledges alerts, audit trail
-- [ ] Multi-room support: triage-engine routes patients across rooms
-- [ ] On-device rPPG inference (TensorFlow.js) to reduce server load
-- [ ] Integration with EHR systems (HL7 FHIR) for discharge records
-- [ ] Noise-robust fall detection using MediaPipe Pose in a Worker thread
-- [ ] Admin analytics: throughput, average acuity, alert frequency
-
----
-
-## Team — Quack3 AJAE
-
-Built at **[Hackathon Name]** — 36 hours, one repo, zero sleep.
-
----
-
-*Architecture deep-dive: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)*  
-*Full API contract: [`docs/API_endpoints.md`](docs/API_endpoints.md)*  
-*Demo playbook: [`docs/DEMO.md`](docs/DEMO.md)*
+## Tech stack
+
+| Layer | Technologies |
+|---|---|
+| Patient app | Next.js 14, React 18, Tailwind CSS 4, LiveKit React SDK, Firebase Auth (optional) |
+| Nurse dashboard | React 19, Vite 6, Tailwind CSS 4, LiveKit React SDK, MediaPipe Tasks (in-browser) |
+| Backend | Python 3.11, FastAPI, Pydantic v2, WebSockets, Uvicorn, SQLite, ReportLab (PDF) |
+| Computer vision | OpenCV, MediaPipe Face Mesh, NumPy, SciPy (Butterworth filter + FFT) |
+| AI & services | Google Gemini (`google-genai`), LiveKit Cloud, Firebase (optional) |
+| Deploy configs | Dockerfile + `railway.toml` (backend), `vercel.json` (nurse dashboard) |
+
+## Run locally
+
+**Requirements:** Python **3.11**, Node.js 18+, and `openssl` (the patient app generates a local HTTPS certificate). For real video you need a [LiveKit Cloud](https://cloud.livekit.io) project, and for AI features a [Gemini API key](https://aistudio.google.com).
+
+1. **Configure.** All three services read the repository-root `.env`.
+   ```bash
+   cp .env.example .env    # then fill in values
+   ```
+2. **Start everything** (macOS/Linux; use `start-all.bat` on Windows). The script installs dependencies, loads `.env`, and starts all three services:
+   ```bash
+   bash start-all.sh            # add --skip-install on later runs
+   ```
+   Or start each service by hand:
+   ```bash
+   # backend: http://localhost:8000  (Swagger UI at /docs)
+   cd backend/triage-engine && python3.11 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt && ./run.sh
+
+   # patient PWA: https://localhost:3000
+   cd frontend/patient-client && npm install && npm run dev
+
+   # nurse dashboard: http://localhost:5173  (room camera at /camera)
+   cd frontend/nurse-command && npm install && npm run dev
+   ```
+   When you start the services by hand, the patient app does **not** read the root `.env`. Export the variables first (`set -a; source .env; set +a`) or copy the `NEXT_PUBLIC_*` values into `frontend/patient-client/.env.local`.
+3. **No keys?** Set `NEXT_PUBLIC_USE_MOCK=true` and `VITE_USE_MOCK=true` to run both UIs on seeded mock data. To fire a demo fall alert:
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/demo/trigger-fall
+   ```
+
+**Tests:** `cd backend/triage-engine && pytest` · `cd backend/rppg && pytest test_rppg.py -v`
+
+> **Known issue:** `npm run build` in `frontend/nurse-command` currently fails type-checking (`src/hooks/useFallDetection.ts` references an undefined `API_BASE`). `npm run dev` still serves the dashboard, but the `/camera` page's Gemini fall uploads hit the same error at runtime.
+
+**Environment variables** (names only, all from `.env.example`)
+
+| Service | Variables |
+|---|---|
+| Backend | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_URL`, `GEMINI_API_KEY`, `CORS_ORIGINS`, `REQUIRE_FIREBASE_AUTH`, `FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_PATH` |
+| Patient app | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_USE_MOCK`, `NEXT_PUBLIC_REQUIRE_FIREBASE_AUTH`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` |
+| Nurse dashboard | `VITE_API_URL`, `VITE_PATIENT_CLIENT_URL`, `VITE_USE_MOCK`, `VITE_REQUIRE_FIREBASE_AUTH`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` |
+
+Firebase auth is optional and off by default. See [`docs/FIREBASE_AUTH.md`](docs/FIREBASE_AUTH.md). Docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/API_endpoints.md`](docs/API_endpoints.md), [`docs/DEMO.md`](docs/DEMO.md).
+
+## Privacy design
+
+- Patients see only an aggregate acuity load, never other patients' identities or wait times.
+- rPPG clips are written to a temporary file, analyzed, and deleted.
+- Gemini notes are advisory. A nurse always owns the acuity decision.
+- **Room-camera fall analysis sends frames or short clips to the backend and on to Gemini.** The in-browser dashboard heuristics send only a small JSON alert. A real deployment would need a reviewed data-handling agreement before using either.
+
+## Team
+
+| Member | Focus |
+|---|---|
+| Ally Chen ([@allyytc](https://github.com/allyytc)) | Nurse command dashboard, check-in UI, MediaPipe fall detection with bounding boxes on nurse video feeds, Gemini triage-analysis integration |
+| Jonathon Lim ([@Jonjlim](https://github.com/Jonjlim)) | LiveKit video, Gemini multi-snapshot fall detection, deployment, nurse dashboard features and UI polish |
+| Ekansh Arora ([@ekanshArora123](https://github.com/ekanshArora123)) | Gemini scene-intel functions, first fall-detection pipeline, AI case-file generation, start scripts |
+| Alan Nguyen ([@ahlawnh](https://github.com/ahlawnh)) | Patient and nurse UIs, rPPG reliability, SQLite persistence, Firebase auth, critical fall-alert modal |
+
+## What we learned
+
+- **rPPG on phones is hard.** Lighting changes and movement add a lot of noise, so we added smoothing, multi-sample buffering, and confidence gating.
+- **WebSockets beat polling** for a dashboard that has to react to alerts immediately.
+- **Keep the AI advisory.** Gemini drafts notes and flags possible falls, but people make the clinical decisions.
+
+## Roadmap
+
+- Respiratory-rate estimation (the data model has a field for it, but it isn't implemented yet).
+- Alert acknowledgment workflow with an audit trail.
+- Multi-room routing; EHR integration (HL7 FHIR).
+- On-device rPPG to reduce server load.
+
+> Hackathon prototype for demonstration only. Not a medical device and not clinically validated.
